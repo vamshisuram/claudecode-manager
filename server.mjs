@@ -302,11 +302,16 @@ function loadPermissions() {
 }
 
 function loadMemory() {
-  return (
-    readText(path.join(process.cwd(), 'CLAUDE.md')) ||
-    readText(path.join(CLAUDE_DIR, 'CLAUDE.md')) ||
-    'No CLAUDE.md found in current directory or ~/.claude/.'
-  );
+  const candidates = [
+    { scope: 'project', path: path.join(process.cwd(), 'CLAUDE.md') },
+    { scope: 'user', path: path.join(CLAUDE_DIR, 'CLAUDE.md') }
+  ];
+  const sources = candidates.map(c => ({
+    ...c,
+    exists: exists(c.path),
+    content: readText(c.path)
+  }));
+  return { sources };
 }
 
 function loadSettings() {

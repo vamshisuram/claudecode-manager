@@ -1656,12 +1656,29 @@ renderMcp = function(root) {
 renderMemory = function(root) {
   root.appendChild(el('div', { class: 'page-header' }, [
     el('h1', { class: 'page-title' }, 'CLAUDE.md memory'),
-    el('p', { class: 'page-desc' }, 'Project-level memory loaded at every session start. Read-only here.')
+    el('p', { class: 'page-desc' }, 'Memory files loaded at session start. Project memory takes precedence over user memory.')
   ]));
-  const wrap = el('div', { class: 'table-wrap', style: 'padding: 20px 24px;' });
-  const txt = typeof data.memory === 'string' ? data.memory : '(no memory file)';
-  wrap.innerHTML = `<pre style="font-family:var(--font-mono); font-size:12px; color:var(--text); white-space:pre-wrap; line-height:1.65; margin:0;">${escHtml(txt)}</pre>`;
-  root.appendChild(wrap);
+  // back-compat with old shape (string)
+  const sources = (data.memory && data.memory.sources)
+    || [{ scope: 'inline', path: '', exists: typeof data.memory === 'string', content: typeof data.memory === 'string' ? data.memory : null }];
+  sources.forEach(s => {
+    const sec = el('div', { class: 'section' });
+    sec.appendChild(el('div', { class: 'section-header' }, [
+      el('div', {}, [
+        el('div', { class: 'section-title' }, `${s.scope} memory`),
+        el('div', { style: 'font-size:11px; color:var(--text-3); margin-top:2px; font-family:var(--font-mono);', html: escHtml(s.path) + (s.exists ? pathActionsHtml(s.path) : '') })
+      ]),
+      el('span', { class: `pill ${s.exists ? 'success' : ''}` }, s.exists ? 'present' : 'not set')
+    ]));
+    if (s.exists && s.content) {
+      const wrap = el('div', { class: 'table-wrap', style: 'padding: 20px 24px;' });
+      wrap.innerHTML = `<pre style="font-family:var(--font-mono); font-size:12px; color:var(--text); white-space:pre-wrap; line-height:1.65; margin:0;">${escHtml(s.content)}</pre>`;
+      sec.appendChild(wrap);
+    } else {
+      sec.appendChild(el('div', { style: 'padding: 14px 20px; color: var(--text-3); font-size: 13px;' }, 'No file at this path.'));
+    }
+    root.appendChild(sec);
+  });
 };
 
 // Override permissions to use real data
