@@ -823,10 +823,9 @@
   <main class="main">
     <div class="topbar">
       <div class="breadcrumb"><strong id="crumb">Overview</strong></div>
-      <div class="scope-badge">
+      <div class="scope-badge" id="scope-badge" title="Working directory used for project-scoped lookups">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-        <span>Project + user scope</span>
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        <span id="scope-text">project + user scope</span>
       </div>
       <input class="search" placeholder="Search anything…" />
       <button id="refresh-btn" title="Refresh" style="background:transparent; border:1px solid var(--border); color:var(--text-2); width:30px; height:30px; border-radius:var(--radius); cursor:pointer; display:grid; place-items:center; margin-left:8px;">
@@ -944,18 +943,20 @@ let data = {
 };
 
 // ======================== ROUTING =========================
+// Wrap each route so later reassignments to render* (overrides below) are
+// resolved at call time, not at routes-object creation time.
 const routes = {
-  overview: renderOverview,
-  plugins: renderPlugins,
-  commands: renderCommands,
-  agents: renderAgents,
-  skills: renderSkills,
-  hooks: renderHooks,
-  mcp: renderMcp,
-  memory: renderMemory,
-  permissions: renderPermissions,
-  settings: renderSettings,
-  sessions: (root) => renderSessions(root),
+  overview:    (root) => renderOverview(root),
+  plugins:     (root) => renderPlugins(root),
+  commands:    (root) => renderCommands(root),
+  agents:      (root) => renderAgents(root),
+  skills:      (root) => renderSkills(root),
+  hooks:       (root) => renderHooks(root),
+  mcp:         (root) => renderMcp(root),
+  memory:      (root) => renderMemory(root),
+  permissions: (root) => renderPermissions(root),
+  settings:    (root) => renderSettings(root),
+  sessions:    (root) => renderSessions(root),
   marketplace: (root) => renderMarketplace(root)
 };
 
@@ -1901,6 +1902,19 @@ function updateNavCounts() {
     const k = node.getAttribute('data-count');
     if (k in counts) node.textContent = counts[k];
   });
+  // scope badge — show the actual cwd
+  const scopeText = document.getElementById('scope-text');
+  if (scopeText && data.meta?.cwd) {
+    const home = data.meta.claudeDir ? data.meta.claudeDir.replace(/\/\.claude$/, '') : '';
+    const cwd = home && data.meta.cwd.startsWith(home) ? '~' + data.meta.cwd.slice(home.length) : data.meta.cwd;
+    scopeText.textContent = cwd;
+  }
+  // brand subtitle (top-left)
+  const brandSub = document.querySelector('.brand-sub');
+  if (brandSub && data.meta?.cwd) {
+    const home = data.meta.claudeDir ? data.meta.claudeDir.replace(/\/\.claude$/, '') : '';
+    brandSub.textContent = home && data.meta.cwd.startsWith(home) ? '~' + data.meta.cwd.slice(home.length) : data.meta.cwd;
+  }
 }
 
 // ======================== GLOBAL SEARCH =========================
