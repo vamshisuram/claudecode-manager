@@ -1976,7 +1976,7 @@ function openPath(p, action) {
 
 function pathActionsHtml(p) {
   if (!p) return '';
-  const sp = JSON.stringify(p);
+  const sp = escHtml(JSON.stringify(p));
   return ` <a href="#" onclick="event.preventDefault(); openPath(${sp},'open'); return false;" style="font-size:11px; color:var(--info); text-decoration:none; margin-left:8px;">open</a>` +
          ` <a href="#" onclick="event.preventDefault(); openPath(${sp},'reveal'); return false;" style="font-size:11px; color:var(--info); text-decoration:none; margin-left:6px;">reveal</a>`;
 }
