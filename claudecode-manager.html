@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Claude Code Manager</title>
+<style>
+  :root {
+    --bg: #faf9f5;
+    --surface: #ffffff;
+    --surface-2: #f5f4ee;
+    --surface-hover: #efeee7;
+    --border: rgba(20, 20, 20, 0.08);
+    --border-strong: rgba(20, 20, 20, 0.14);
+    --text: #1a1a19;
+    --text-2: #5f5e5a;
+    --text-3: #888780;
+    --accent: #c96442;
+    --accent-soft: #faece7;
+    --accent-border: #f0997b;
+    --info: #185fa5;
+    --info-soft: #e6f1fb;
+    --success: #3b6d11;
+    --success-soft: #eaf3de;
+    --warning: #854f0b;
+    --warning-soft: #faeeda;
+    --purple: #534ab7;
+    --purple-soft: #eeedfe;
+    --teal: #0f6e56;
+    --teal-soft: #e1f5ee;
+    --pink: #993556;
+    --pink-soft: #fbeaf0;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a17;
+      --surface: #232220;
+      --surface-2: #2b2a27;
+      --surface-hover: #34332f;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-strong: rgba(255, 255, 255, 0.14);
+      --text: #ecebe5;
+      --text-2: #a8a7a0;
+      --text-3: #807e77;
+      --accent: #f0997b;
+      --accent-soft: rgba(240, 153, 123, 0.12);
+      --info-soft: rgba(53, 122, 189, 0.14);
+      --success-soft: rgba(99, 153, 34, 0.14);
+      --warning-soft: rgba(186, 117, 23, 0.14);
+      --purple-soft: rgba(127, 119, 221, 0.14);
+      --teal-soft: rgba(29, 158, 117, 0.14);
+      --pink-soft: rgba(212, 83, 126, 0.14);
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; height: 100vh; overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--surface);
+    border-right: 0.5px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .brand {
+    padding: 18px 20px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .brand-mark {
+    width: 26px; height: 26px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    color: white;
+    font-weight: 500;
+    font-size: 13px;
+    font-family: var(--font-mono);
+  }
+  .brand-text {
+    font-weight: 500;
+    font-size: 14px;
+    letter-spacing: -0.01em;
+  }
+  .brand-sub {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 1px;
+  }
+
+  .nav-group { padding: 16px 12px 6px; }
+  .nav-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+    padding: 0 8px 6px;
+    font-weight: 500;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-2);
+    font-size: 13px;
+    user-select: none;
+    transition: background 0.08s ease;
+  }
+  .nav-item:hover { background: var(--surface-hover); color: var(--text); }
+  .nav-item.active { background: var(--accent-soft); color: var(--accent); }
+  .nav-item.active .nav-icon { color: var(--accent); }
+  .nav-item.active .nav-count { color: var(--accent); }
+  .nav-icon {
+    width: 16px; height: 16px;
+    color: var(--text-3);
+    flex-shrink: 0;
+  }
+  .nav-text { flex: 1; }
+  .nav-count {
+    font-size: 11px;
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+    font-family: var(--font-mono);
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 12px 20px;
+    border-top: 0.5px solid var(--border);
+    font-size: 11px;
+    color: var(--text-3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #3b6d11;
+    box-shadow: 0 0 0 3px rgba(99, 153, 34, 0.18);
+  }
+
+  /* Main */
+  .main { overflow-y: auto; }
+  .topbar {
+    padding: 16px 32px;
+    border-bottom: 0.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .breadcrumb {
+    font-size: 13px;
+    color: var(--text-2);
+    flex: 1;
+  }
+  .breadcrumb strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+  .search {
+    background: var(--surface);
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius);
+    padding: 6px 10px 6px 30px;
+    font-size: 13px;
+    width: 240px;
+    color: var(--text);
+    font-family: inherit;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888780' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 10px center;
+  }
+  .search:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  .scope-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 0.5px solid var(--border-strong);
+    padding: 5px 10px;
+    border-radius: var(--radius);
+    font-size: 12px;
+    color: var(--text-2);
+    cursor: pointer;
+  }
+  .scope-badge:hover { background: var(--surface-hover); }
+
+  .content { padding: 24px 32px 64px; max-width: 1200px; }
+
+  .page-header { margin-bottom: 24px; }
+  .page-title {
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    margin-bottom: 4px;
+  }
+  .page-desc {
+    color: var(--text-2);
+    font-size: 13px;
+    max-width: 640px;
+  }
+
+  /* Stat strip */
+  .stat-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .stat-value {
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-meta {
+    font-size: 12px;
+    color: var(--text-2);
+    margin-top: 4px;
+  }
+  .stat-bar {
+    margin-top: 10px;
+    height: 4px;
+    background: var(--surface-2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .stat-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+
+  /* Section */
+  .section { margin-bottom: 32px; }
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .section-link {
+    font-size: 12px;
+    color: var(--accent);
+    cursor: pointer;
+  }
+  .section-link:hover { text-decoration: underline; }
+
+  /* Plugin cards */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    cursor: pointer;
+    transition: border-color 0.1s ease, transform 0.1s ease;
+  }
+  .card:hover {
+    border-color: var(--border-strong);
+  }
+  .card-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .card-icon {
+    width: 32px; height: 32px;
+    border-radius: 7px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .card-title { font-weight: 500; font-size: 14px; line-height: 1.3; }
+  .card-source { font-size: 11px; color: var(--text-3); margin-top: 2px; font-family: var(--font-mono); }
+  .card-desc {
+    font-size: 13px;
+    color: var(--text-2);
+    margin: 8px 0 12px;
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-foot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--text-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .pill svg { width: 11px; height: 11px; }
+  .pill.purple { background: var(--purple-soft); color: var(--purple); }
+  .pill.teal { background: var(--teal-soft); color: var(--teal); }
+  .pill.info { background: var(--info-soft); color: var(--info); }
+  .pill.warning { background: var(--warning-soft); color: var(--warning); }
+  .pill.success { background: var(--success-soft); color: var(--success); }
+  .pill.pink { background: var(--pink-soft); color: var(--pink); }
+
+  .toggle {
+    margin-left: auto;
+    width: 30px;
+    height: 18px;
+    background: var(--surface-2);
+    border-radius: 999px;
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+    border: 0.5px solid var(--border);
+  }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 1.5px; left: 2px;
+    width: 13px; height: 13px;
+    background: var(--text-3);
+    border-radius: 50%;
+    transition: all 0.15s ease;
+  }
+  .toggle.on { background: var(--accent-soft); border-color: var(--accent-border); }
+  .toggle.on::after { left: 14px; background: var(--accent); }
+
+  /* Hooks lifecycle timeline */
+  .lifecycle {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .lifecycle-title {
+    font-size: 13px;
+    color: var(--text-2);
+    margin-bottom: 4px;
+  }
+  .lifecycle-desc {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-bottom: 20px;
+  }
+  .lifecycle-track {
+    position: relative;
+    height: 110px;
+    margin: 0 12px;
+  }
+  .lifecycle-line {
+    position: absolute;
+    top: 38px;
+    left: 0; right: 0;
+    height: 2px;
+    background: var(--border-strong);
+  }
+  .lifecycle-events {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    height: 100%;
+  }
+  .lifecycle-event {
+    position: relative;
+    text-align: center;
+    cursor: pointer;
+  }
+  .event-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2px solid var(--border-strong);
+    margin: 31px auto 0;
+    position: relative;
+    z-index: 1;
+    transition: all 0.15s ease;
+  }
+  .lifecycle-event.has-hooks .event-dot {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-soft);
+  }
+  .lifecycle-event:hover .event-dot { transform: scale(1.15); }
+  .event-name {
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 10px;
+    color: var(--text);
+    font-family: var(--font-mono);
+  }
+  .event-count {
+    font-size: 10px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+  .event-count.has-hooks { color: var(--accent); font-weight: 500; }
+  .event-time-label {
+    position: absolute;
+    top: 0;
+    font-size: 10px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .event-time-label.left { left: 0; }
+  .event-time-label.right { right: 0; }
+
+  /* Hook list */
+  .hook-row {
+    display: grid;
+    grid-template-columns: 28px 140px 1fr auto;
+    gap: 14px;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 0.5px solid var(--border);
+    cursor: pointer;
+  }
+  .hook-row:hover { background: var(--surface-hover); }
+  .hook-row:last-child { border-bottom: none; }
+  .hook-type-icon {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    color: var(--text-2);
+  }
+  .hook-event {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+  .hook-event-meta {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+  .hook-cmd {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .hook-source {
+    font-size: 11px;
+    color: var(--text-3);
+    font-family: var(--font-mono);
+  }
+  .table-wrap {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .table-head {
+    display: grid;
+    grid-template-columns: 28px 140px 1fr auto;
+    gap: 14px;
+    padding: 10px 16px;
+    background: var(--surface-2);
+    border-bottom: 0.5px solid var(--border);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+    font-weight: 500;
+  }
+
+  /* Subagent capability matrix */
+  .agent-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    margin-bottom: 10px;
+  }
+  .agent-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .agent-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--purple-soft);
+    color: var(--purple);
+    display: grid;
+    place-items: center;
+    font-weight: 500;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .agent-name { font-weight: 500; font-size: 14px; }
+  .agent-meta { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+  .agent-tools {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .tool-chip {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 3px 8px;
+    background: var(--surface-2);
+    border-radius: 4px;
+    color: var(--text-2);
+    border: 0.5px solid var(--border);
+  }
+  .tool-chip.granted { background: var(--success-soft); color: var(--success); border-color: rgba(99,153,34,0.18); }
+  .tool-chip.denied { background: var(--surface-2); color: var(--text-3); text-decoration: line-through; }
+
+  /* MCP servers */
+  .mcp-row {
+    display: grid;
+    grid-template-columns: 32px 1fr auto auto;
+    gap: 14px;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .mcp-row:last-child { border-bottom: none; }
+  .mcp-icon {
+    width: 32px; height: 32px;
+    border-radius: 7px;
+    background: var(--info-soft);
+    display: grid;
+    place-items: center;
+    color: var(--info);
+  }
+  .mcp-name { font-weight: 500; font-size: 13px; }
+  .mcp-url { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .mcp-tools-count { font-size: 12px; color: var(--text-2); }
+
+  /* Skills / commands list */
+  .item-row {
+    display: grid;
+    grid-template-columns: 28px 1fr auto auto;
+    gap: 14px;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 0.5px solid var(--border);
+    cursor: pointer;
+  }
+  .item-row:last-child { border-bottom: none; }
+  .item-row:hover { background: var(--surface-hover); }
+  .item-icon {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    color: var(--text-2);
+  }
+  .item-name {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text);
+  }
+  .item-desc {
+    font-size: 12px;
+    color: var(--text-2);
+    margin-top: 2px;
+  }
+
+  /* Right-side detail drawer */
+  .drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.32);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+    z-index: 100;
+  }
+  .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+  .drawer {
+    position: fixed;
+    top: 0; right: 0;
+    bottom: 0;
+    width: 480px;
+    max-width: 92vw;
+    background: var(--bg);
+    border-left: 0.5px solid var(--border-strong);
+    transform: translateX(100%);
+    transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+    z-index: 101;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-head {
+    padding: 18px 24px;
+    border-bottom: 0.5px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .drawer-close {
+    background: none;
+    border: none;
+    color: var(--text-3);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 2px 6px;
+    margin-left: auto;
+    border-radius: 4px;
+  }
+  .drawer-close:hover { background: var(--surface-hover); color: var(--text); }
+  .drawer-body { padding: 18px 24px; flex: 1; }
+  .drawer-section { margin-bottom: 24px; }
+  .drawer-section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  .drawer-section-body { font-size: 13px; color: var(--text); line-height: 1.55; }
+  .code-block {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    color: var(--text);
+    overflow-x: auto;
+    line-height: 1.5;
+    white-space: pre;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-3);
+    font-size: 13px;
+  }
+
+  .kbd {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
+    border-bottom-width: 1.5px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--text-2);
+  }
+
+  .pulse {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 0 0 rgba(99, 153, 34, 0.6);
+    animation: pulse 2s ease-out infinite;
+    display: inline-block;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(99, 153, 34, 0.6); }
+    70% { box-shadow: 0 0 0 6px rgba(99, 153, 34, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(99, 153, 34, 0); }
+  }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">cc</div>
+      <div>
+        <div class="brand-text">Claude manager</div>
+        <div class="brand-sub">~/dev/vamshisuram</div>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Workspace</div>
+      <div class="nav-item active" data-route="overview">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        <span class="nav-text">Overview</span>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Extensions</div>
+      <div class="nav-item" data-route="plugins">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <span class="nav-text">Plugins</span>
+        <span class="nav-count">7</span>
+      </div>
+      <div class="nav-item" data-route="commands">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+        <span class="nav-text">Slash commands</span>
+        <span class="nav-count">23</span>
+      </div>
+      <div class="nav-item" data-route="agents">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>
+        <span class="nav-text">Subagents</span>
+        <span class="nav-count">9</span>
+      </div>
+      <div class="nav-item" data-route="skills">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20M5 5l14 14M19 5 5 19"/></svg>
+        <span class="nav-text">Skills</span>
+        <span class="nav-count">14</span>
+      </div>
+      <div class="nav-item" data-route="hooks">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        <span class="nav-text">Hooks</span>
+        <span class="nav-count">11</span>
+      </div>
+      <div class="nav-item" data-route="mcp">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span class="nav-text">MCP servers</span>
+        <span class="nav-count">5</span>
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Configuration</div>
+      <div class="nav-item" data-route="memory">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span class="nav-text">CLAUDE.md</span>
+      </div>
+      <div class="nav-item" data-route="permissions">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span class="nav-text">Permissions</span>
+      </div>
+      <div class="nav-item" data-route="settings">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span class="nav-text">Settings</span>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <span class="status-dot"></span>
+      <span>Claude Code <span style="font-family: var(--font-mono);">2.6.1</span></span>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <div class="breadcrumb"><strong id="crumb">Overview</strong></div>
+      <div class="scope-badge">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span>Project + user scope</span>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <input class="search" placeholder="Search anything…" />
+    </div>
+
+    <div class="content" id="content"></div>
+  </main>
+</div>
+
+<!-- Drawer -->
+<div class="drawer-backdrop" id="drawer-backdrop"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div id="drawer-head-content" style="flex:1"></div>
+    <button class="drawer-close" id="drawer-close" aria-label="Close">×</button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</aside>
+
+<script>
+// ======================== MOCK DATA =========================
+// Realistic dataset reflecting a working Claude Code environment
+
+let data = {
+  plugins: [
+    { id: 'pr-review-toolkit', name: 'pr-review-toolkit', source: 'anthropics/claude-code', desc: 'Comprehensive PR review with specialized agents for comments, tests, errors, types, and simplification.', enabled: true, commands: 1, agents: 6, hooks: 0, mcp: 0, color: 'purple', initial: 'PR' },
+    { id: 'plugin-dev', name: 'plugin-dev', source: 'anthropics/claude-code', desc: '8-phase guided workflow for building plugins, with creator and validator agents.', enabled: true, commands: 1, agents: 3, hooks: 0, mcp: 0, color: 'teal', initial: 'PD' },
+    { id: 'maestro-orchestrate', name: 'maestro-orchestrate', source: 'composiohq/awesome-claude-plugins', desc: 'Multi-agent dev orchestration coordinating 22 specialized subagents through 4-phase workflows.', enabled: true, commands: 4, agents: 22, hooks: 2, mcp: 1, color: 'pink', initial: 'MO' },
+    { id: 'backlog', name: 'backlog', source: 'composiohq/awesome-claude-plugins', desc: 'Persistent cross-session task management. 24 MCP tools for tasks, projects, tags, and dependencies.', enabled: true, commands: 3, agents: 0, hooks: 1, mcp: 1, color: 'info', initial: 'BL' },
+    { id: 'audit-project', name: 'audit-project', source: 'ccplugins/awesome-claude-code-plugins', desc: 'Full project audit for code quality, dependencies, security, and best practices.', enabled: false, commands: 1, agents: 4, hooks: 0, mcp: 0, color: 'warning', initial: 'AP' },
+    { id: 'context-mode', name: 'context-mode', source: 'composiohq/awesome-claude-plugins', desc: 'Process large outputs in sandboxed subprocesses, keeping only summaries in context. 98% savings.', enabled: true, commands: 0, agents: 1, hooks: 1, mcp: 0, color: 'success', initial: 'CM' },
+    { id: 'vs-internal', name: 'vs-internal', source: 'vamshisuram/private', desc: 'Vamshi Suram house style and conventions. Astro + Cloudflare Pages defaults, blog post linter.', enabled: true, commands: 5, agents: 2, hooks: 3, mcp: 0, color: 'pink', initial: 'VS' }
+  ],
+
+  commands: [
+    { name: '/pr-review-toolkit:review-pr', plugin: 'pr-review-toolkit', desc: 'Run with optional review aspects (comments, tests, errors, types, code, simplify, all)', invokes: 'agent' },
+    { name: '/plugin-dev:create-plugin', plugin: 'plugin-dev', desc: '8-phase guided workflow for building a new plugin from scratch', invokes: 'agent' },
+    { name: '/backlog:list', plugin: 'backlog', desc: 'List all open tasks across projects with optional tag filter', invokes: 'mcp' },
+    { name: '/backlog:standup', plugin: 'backlog', desc: 'Generate daily standup summary from yesterday\'s closed tasks', invokes: 'agent' },
+    { name: '/backlog:plan', plugin: 'backlog', desc: 'Plan upcoming sprint by selecting tasks from the backlog', invokes: 'agent' },
+    { name: '/maestro:orchestrate', plugin: 'maestro-orchestrate', desc: 'Run a 4-phase workflow with up to 22 parallel subagents', invokes: 'agent' },
+    { name: '/maestro:debug', plugin: 'maestro-orchestrate', desc: 'Standalone debugging workflow with reproduction agent', invokes: 'agent' },
+    { name: '/vs-internal:blog-draft', plugin: 'vs-internal', desc: 'Draft a blog post in Vamshi Suram house style with frontmatter', invokes: 'skill' },
+    { name: '/vs-internal:astro-page', plugin: 'vs-internal', desc: 'Scaffold a new Astro page with our layout and SEO defaults', invokes: 'skill' },
+    { name: '/init', plugin: 'built-in', desc: 'Initialize a CLAUDE.md memory file from the current project', invokes: 'built-in' },
+    { name: '/compact', plugin: 'built-in', desc: 'Compact the conversation by summarizing earlier turns', invokes: 'built-in' },
+    { name: '/hooks', plugin: 'built-in', desc: 'Open the read-only hooks browser for the current session', invokes: 'built-in' }
+  ],
+
+  agents: [
+    { name: 'code-reviewer', plugin: 'pr-review-toolkit', desc: 'Reviews code quality, naming, structure, and obvious bugs.', model: 'sonnet', tools: ['Read', 'Grep', 'Glob', 'Bash'], denied: ['Write', 'Edit'] },
+    { name: 'silent-failure-hunter', plugin: 'pr-review-toolkit', desc: 'Hunts for swallowed exceptions and ignored errors across the diff.', model: 'sonnet', tools: ['Read', 'Grep', 'Glob'], denied: ['Write', 'Edit', 'Bash'] },
+    { name: 'type-design-analyzer', plugin: 'pr-review-toolkit', desc: 'Critiques type design and reviews discriminated unions.', model: 'sonnet', tools: ['Read', 'Grep'], denied: ['Write', 'Edit', 'Bash'] },
+    { name: 'pr-test-analyzer', plugin: 'pr-review-toolkit', desc: 'Validates test coverage of new branches and edge cases.', model: 'sonnet', tools: ['Read', 'Grep', 'Bash'], denied: ['Write', 'Edit'] },
+    { name: 'comment-analyzer', plugin: 'pr-review-toolkit', desc: 'Reviews comments for clarity, accuracy, and necessity.', model: 'haiku', tools: ['Read', 'Grep'], denied: ['Write', 'Edit', 'Bash'] },
+    { name: 'plugin-validator', plugin: 'plugin-dev', desc: 'Validates plugin.json structure and all referenced components.', model: 'sonnet', tools: ['Read', 'Grep', 'Glob', 'Bash'], denied: ['Write'] },
+    { name: 'agent-creator', plugin: 'plugin-dev', desc: 'Interactive workflow to create a new subagent definition file.', model: 'sonnet', tools: ['Read', 'Write', 'Edit', 'AskUserQuestion'], denied: ['Bash'] },
+    { name: 'maestro-coordinator', plugin: 'maestro-orchestrate', desc: 'Top-level coordinator that fans work out to specialist agents.', model: 'opus', tools: ['Read', 'Grep', 'Glob', 'Agent', 'Bash'], denied: [] },
+    { name: 'vs-blog-editor', plugin: 'vs-internal', desc: 'Edits drafts to VS voice — concise, technical, no marketing fluff.', model: 'sonnet', tools: ['Read', 'Edit', 'Grep'], denied: ['Bash', 'Write'] }
+  ],
+
+  skills: [
+    { name: 'astro-conventions', plugin: 'vs-internal', desc: 'Vamshi Suram Astro project structure: integrations, layout slots, image handling.', autoInvoke: true },
+    { name: 'vs-blog-style', plugin: 'vs-internal', desc: 'House style guide for blog posts. Voice, length, frontmatter shape.', autoInvoke: true },
+    { name: 'twenty-crm-workflows', plugin: 'vs-internal', desc: 'Twenty CRM custom workflow patterns with HTTP Request nodes and variable picker.', autoInvoke: false },
+    { name: 'docx', plugin: 'built-in', desc: 'Create, read, edit, or manipulate Word documents.', autoInvoke: true },
+    { name: 'pdf', plugin: 'built-in', desc: 'Read, extract text from, or generate PDF files.', autoInvoke: true },
+    { name: 'pptx', plugin: 'built-in', desc: 'Create, edit, or extract from PowerPoint presentations.', autoInvoke: true },
+    { name: 'xlsx', plugin: 'built-in', desc: 'Create, read, edit Excel and CSV files; build models and charts.', autoInvoke: true },
+    { name: 'frontend-design', plugin: 'built-in', desc: 'Distinctive, production-grade frontend interfaces. Tokens and patterns.', autoInvoke: true },
+    { name: 'skill-creator', plugin: 'plugin-dev', desc: 'Helper for creating new skills, with templates and validation.', autoInvoke: false },
+    { name: 'mcp-builder', plugin: 'plugin-dev', desc: 'Guides creation of high-quality MCP servers for external APIs.', autoInvoke: false },
+    { name: 'invoice-analyser', plugin: 'vs-internal', desc: 'OCR + LLM pipeline for invoices using Claude API and MinIO storage.', autoInvoke: false },
+    { name: 'prompt-lab-eval', plugin: 'vs-internal', desc: 'A/B test LLM prompts and score outputs against rubrics.', autoInvoke: false },
+    { name: 'jwt-explainer', plugin: 'vs-internal', desc: 'Generates JWT/OAuth/OIDC teaching material for junior developers.', autoInvoke: false },
+    { name: 'context-saver', plugin: 'context-mode', desc: 'Run heavy tool output through subprocess and return summary only.', autoInvoke: true }
+  ],
+
+  hooks: [
+    { event: 'PreToolUse', matcher: 'Bash', type: 'command', cmd: './scripts/security-check.sh', source: 'vs-internal/hooks', desc: 'Block destructive bash commands matching deny list' },
+    { event: 'PreToolUse', matcher: 'Write|Edit', type: 'command', cmd: 'biome check --files-only', source: 'project settings.json', desc: 'Lint files before write' },
+    { event: 'PreToolUse', matcher: 'Bash(git push *)', type: 'prompt', cmd: 'evaluate-push-safety', source: 'vs-internal/hooks', desc: 'Ask Claude to verify nothing sensitive is being pushed' },
+    { event: 'PostToolUse', matcher: 'Edit|Write', type: 'command', cmd: 'biome format --write', source: 'project settings.json', desc: 'Auto-format on every file write' },
+    { event: 'PostToolUse', matcher: 'Edit|Write', type: 'command', cmd: 'pnpm typecheck', source: 'vs-internal/hooks', desc: 'Run type checker after writes to .ts files' },
+    { event: 'UserPromptSubmit', matcher: '*', type: 'command', cmd: 'echo $(date +%s) >> .claude/log', source: 'user settings.json', desc: 'Log every prompt timestamp' },
+    { event: 'UserPromptSubmit', matcher: '*', type: 'agent', cmd: 'context-saver', source: 'context-mode plugin', desc: 'Inject project state into context' },
+    { event: 'SessionStart', matcher: '*', type: 'command', cmd: 'cat CLAUDE.md', source: 'user settings.json', desc: 'Surface memory file at session start' },
+    { event: 'Stop', matcher: '*', type: 'command', cmd: './scripts/save-session.sh', source: 'maestro-orchestrate', desc: 'Persist session metadata to backlog' },
+    { event: 'SubagentStop', matcher: '*', type: 'command', cmd: './scripts/agent-cost.sh', source: 'maestro-orchestrate', desc: 'Track per-agent token cost' },
+    { event: 'Notification', matcher: '*', type: 'command', cmd: 'osascript -e "display notification"', source: 'user settings.json', desc: 'macOS notification on idle' }
+  ],
+
+  mcp: [
+    { name: 'github', url: 'github-mcp.composio.dev', tools: 28, status: 'connected', desc: 'GitHub repos, issues, PRs, actions' },
+    { name: 'twenty-crm', url: 'localhost:3000/mcp', tools: 14, status: 'connected', desc: 'Twenty CRM workflows and HTTP nodes' },
+    { name: 'backlog', url: 'stdio:backlog-mcp', tools: 24, status: 'connected', desc: 'Persistent task store, projects, dependencies' },
+    { name: 'sentry', url: 'sentry-mcp.composio.dev', tools: 11, status: 'connected', desc: 'Issues, releases, performance traces' },
+    { name: 'minio', url: 'localhost:9000/mcp', tools: 8, status: 'disconnected', desc: 'Object storage for invoice-analyser pipeline' }
+  ],
+
+  lifecycleEvents: [
+    { name: 'SessionStart', desc: 'New session begins', count: 1 },
+    { name: 'UserPromptSubmit', desc: 'User submits a prompt', count: 2 },
+    { name: 'PreToolUse', desc: 'Before tool execution', count: 3 },
+    { name: 'PostToolUse', desc: 'After tool completes', count: 2 },
+    { name: 'Notification', desc: 'Idle / waiting for input', count: 1 },
+    { name: 'SubagentStop', desc: 'Subagent finishes', count: 1 },
+    { name: 'Stop', desc: 'Main session ends', count: 1 }
+  ]
+};
+
+// ======================== ROUTING =========================
+const routes = {
+  overview: renderOverview,
+  plugins: renderPlugins,
+  commands: renderCommands,
+  agents: renderAgents,
+  skills: renderSkills,
+  hooks: renderHooks,
+  mcp: renderMcp,
+  memory: renderMemory,
+  permissions: renderPermissions,
+  settings: renderSettings
+};
+
+const routeLabels = {
+  overview: 'Overview',
+  plugins: 'Plugins',
+  commands: 'Slash commands',
+  agents: 'Subagents',
+  skills: 'Skills',
+  hooks: 'Hooks',
+  mcp: 'MCP servers',
+  memory: 'CLAUDE.md',
+  permissions: 'Permissions',
+  settings: 'Settings'
+};
+
+function navigate(route) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.route === route));
+  document.getElementById('crumb').textContent = routeLabels[route] || route;
+  const content = document.getElementById('content');
+  content.innerHTML = '';
+  (routes[route] || renderOverview)(content);
+}
+
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => navigate(el.dataset.route));
+});
+
+// ======================== HELPERS =========================
+function el(tag, attrs = {}, children = []) {
+  const node = document.createElement(tag);
+  Object.entries(attrs).forEach(([k, v]) => {
+    if (k === 'class') node.className = v;
+    else if (k === 'html') node.innerHTML = v;
+    else if (k.startsWith('on')) node.addEventListener(k.slice(2).toLowerCase(), v);
+    else node.setAttribute(k, v);
+  });
+  (Array.isArray(children) ? children : [children]).forEach(c => {
+    if (c == null || c === false) return;
+    node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  });
+  return node;
+}
+
+function icon(svgPaths) {
+  return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${svgPaths}</svg>`;
+}
+
+// ======================== DRAWER =========================
+const drawer = document.getElementById('drawer');
+const drawerBackdrop = document.getElementById('drawer-backdrop');
+document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+drawerBackdrop.addEventListener('click', closeDrawer);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+function openDrawer(headHtml, bodyHtml) {
+  document.getElementById('drawer-head-content').innerHTML = headHtml;
+  document.getElementById('drawer-body').innerHTML = bodyHtml;
+  drawer.classList.add('open');
+  drawerBackdrop.classList.add('open');
+}
+function closeDrawer() {
+  drawer.classList.remove('open');
+  drawerBackdrop.classList.remove('open');
+}
+
+// ======================== RENDERERS =========================
+
+function renderOverview(root) {
+  // Header
+  root.appendChild(el('div', { class: 'page-header' }, [
+    el('h1', { class: 'page-title' }, 'Your Claude Code workspace'),
+    el('p', { class: 'page-desc' }, 'Plugins, agents, hooks, and connections — everything that shapes how Claude behaves in this project.')
+  ]));
+
+  // Stat strip
+  const enabledPlugins = data.plugins.filter(p => p.enabled).length;
+  const activeHooks = data.hooks.length;
+  const connectedMcp = data.mcp.filter(m => m.status === 'connected').length;
+  const stats = [
+    { label: 'Plugins', value: `${enabledPlugins} / ${data.plugins.length}`, meta: `${data.plugins.length - enabledPlugins} disabled`, fill: enabledPlugins / data.plugins.length },
+    { label: 'Active hooks', value: activeHooks, meta: 'Across 6 lifecycle events' },
+    { label: 'Subagents available', value: data.agents.length, meta: '3 ready to invoke' },
+    { label: 'MCP connections', value: `${connectedMcp} / ${data.mcp.length}`, meta: connectedMcp === data.mcp.length ? 'All healthy' : '1 offline' }
+  ];
+  const strip = el('div', { class: 'stat-strip' });
+  stats.forEach(s => {
+    const c = el('div', { class: 'stat' });
+    c.appendChild(el('div', { class: 'stat-label' }, s.label));
+    c.appendChild(el('div', { class: 'stat-value' }, String(s.value)));
+    c.appendChild(el('div', { class: 'stat-meta' }, s.meta));
+    if (s.fill !== undefined) {
+      const bar = el('div', { class: 'stat-bar' });
+      bar.appendChild(el('div', { class: 'stat-bar-fill', style: `width: ${s.fill * 100}%` }));
+      c.appendChild(bar);
+    }
+    strip.appendChild(c);
+  });
+  root.appendChild(strip);
+
+  // Hook lifecycle (hero element)
+  root.appendChild(renderHookLifecycle());
+
+  // Recently active plugins
+  const section = el('div', { class: 'section' });
+  section.appendChild(el('div', { class: 'section-header' }, [
+    el('div', { class: 'section-title' }, 'Active plugins'),
+    el('div', { class: 'section-link', onclick: () => navigate('plugins') }, 'View all →')
+  ]));
+  const grid = el('div', { class: 'grid' });
+  data.plugins.filter(p => p.enabled).slice(0, 6).forEach(p => grid.appendChild(renderPluginCard(p)));
+  section.appendChild(grid);
+  root.appendChild(section);
+}
+
+function renderHookLifecycle() {
+  const wrap = el('div', { class: 'lifecycle' });
+  wrap.appendChild(el('div', { class: 'lifecycle-title' }, 'Hook lifecycle'));
+  wrap.appendChild(el('div', { class: 'lifecycle-desc' }, 'When Claude executes a turn, hooks fire at these checkpoints. Filled dots have hooks attached.'));
+
+  const track = el('div', { class: 'lifecycle-track' });
+  const labelLeft = el('div', { class: 'event-time-label left' }, 'Session begins');
+  const labelRight = el('div', { class: 'event-time-label right' }, 'Session ends');
+  track.appendChild(labelLeft);
+  track.appendChild(labelRight);
+  track.appendChild(el('div', { class: 'lifecycle-line' }));
+
+  const events = el('div', { class: 'lifecycle-events' });
+  data.lifecycleEvents.forEach(ev => {
+    const evEl = el('div', { class: `lifecycle-event ${ev.count > 0 ? 'has-hooks' : ''}`, onclick: () => {
+      navigate('hooks');
+    }});
+    evEl.appendChild(el('div', { class: 'event-dot' }));
+    evEl.appendChild(el('div', { class: 'event-name' }, ev.name));
+    evEl.appendChild(el('div', { class: `event-count ${ev.count > 0 ? 'has-hooks' : ''}` }, `${ev.count} hook${ev.count !== 1 ? 's' : ''}`));
+    events.appendChild(evEl);
+  });
+  track.appendChild(events);
+  wrap.appendChild(track);
+  return wrap;
+}
+
+function renderPluginCard(p) {
+  const colorMap = {
+    purple: ['var(--purple-soft)', 'var(--purple)'],
+    teal: ['var(--teal-soft)', 'var(--teal)'],
+    info: ['var(--info-soft)', 'var(--info)'],
+    pink: ['var(--pink-soft)', 'var(--pink)'],
+    success: ['var(--success-soft)', 'var(--success)'],
+    warning: ['var(--warning-soft)', 'var(--warning)']
+  };
+  const [bg, fg] = colorMap[p.color] || colorMap.info;
+
+  const card = el('div', { class: 'card', onclick: () => openPluginDrawer(p) });
+  const head = el('div', { class: 'card-head' });
+  head.appendChild(el('div', { class: 'card-icon', style: `background: ${bg}; color: ${fg}` }, p.initial));
+  const titleWrap = el('div', { style: 'flex: 1; min-width: 0;' });
+  titleWrap.appendChild(el('div', { class: 'card-title' }, p.name));
+  titleWrap.appendChild(el('div', { class: 'card-source' }, p.source));
+  head.appendChild(titleWrap);
+  const tog = el('div', { class: `toggle ${p.enabled ? 'on' : ''}`, onclick: e => {
+    e.stopPropagation();
+    p.enabled = !p.enabled;
+    tog.classList.toggle('on', p.enabled);
+  }});
+  head.appendChild(tog);
+  card.appendChild(head);
+
+  card.appendChild(el('div', { class: 'card-desc' }, p.desc));
+
+  const foot = el('div', { class: 'card-foot' });
+  if (p.commands) foot.appendChild(makePill(p.commands, 'commands', 'info'));
+  if (p.agents) foot.appendChild(makePill(p.agents, p.agents === 1 ? 'agent' : 'agents', 'purple'));
+  if (p.hooks) foot.appendChild(makePill(p.hooks, p.hooks === 1 ? 'hook' : 'hooks', 'warning'));
+  if (p.mcp) foot.appendChild(makePill(p.mcp, 'MCP', 'teal'));
+  card.appendChild(foot);
+  return card;
+}
+
+function makePill(count, label, tone) {
+  return el('span', { class: `pill ${tone}` }, `${count} ${label}`);
+}
+
+function renderPlugins(root) {
+  root.appendChild(el('div', { class: 'page-header' }, [
+    el('h1', { class: 'page-title' }, 'Plugins'),
+    el('p', { class: 'page-desc' }, 'Plugins bundle slash commands, subagents, hooks, skills, and MCP servers into a single installable unit.')
+  ]));
+  const grid = el('div', { class: 'grid' });
+  data.plugins.forEach(p => grid.appendChild(renderPluginCard(p)));
+  root.appendChild(grid);
+}
+
+function openPluginDrawer(p) {
+  const head = `
+    <div style="display:flex; gap:12px; align-items:flex-start;">
+      <div class="card-icon" style="background: var(--accent-soft); color: var(--accent); width:40px; height:40px; font-size:14px;">${p.initial}</div>
+      <div>
+        <div style="font-size:16px; font-weight:500;">${p.name}</div>
+        <div style="font-size:12px; color:var(--text-3); font-family:var(--font-mono); margin-top:2px;">${p.source}</div>
+      </div>
+    </div>`;
+  const body = `
+    <div class="drawer-section">
+      <div class="drawer-section-label">About</div>
+      <div class="drawer-section-body">${p.desc}</div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-label">What's inside</div>
+      <div class="drawer-section-body">
+        <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:10px;">
+          ${pluginContentRow('Slash commands', p.commands)}
+          ${pluginContentRow('Subagents', p.agents)}
+          ${pluginContentRow('Hooks', p.hooks)}
+          ${pluginContentRow('MCP servers', p.mcp)}
+        </div>
+      </div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-label">Plugin manifest</div>
+      <div class="code-block">{
+  "name": "${p.name}",
+  "version": "1.4.0",
+  "commands": "./commands",
+  "agents": "./agents",
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./.mcp.json"
+}</div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-label">Status</div>
+      <div class="drawer-section-body">${p.enabled ? '<span class="pulse"></span> Enabled in this project' : 'Disabled — toggle on to load on next session'}</div>
+    </div>`;
+  openDrawer(head, body);
+}
+
+function pluginContentRow(label, count) {
+  return `<div style="background: var(--surface-2); border-radius: var(--radius); padding: 10px 12px;">
+    <div style="font-size:11px; color:var(--text-3); text-transform:uppercase; letter-spacing:0.06em;">${label}</div>
+    <div style="font-size:18px; font-weight:500; margin-top:4px;">${count}</div>
+  </div>`;
+}
+
+function renderCommands(root) {
+  root.appendChild(el('div', { class: 'page-header' }, [
+    el('h1', { class: 'page-title' }, 'Slash commands'),
+    el('p', { class: 'page-desc' }, 'User-initiated shortcuts. Type / in Claude Code to see this list.')
+  ]));
+
+  const wrap = el('div', { class: 'table-wrap' });
+  data.commands.forEach(c => {
+    const row = el('div', { class: 'item-row', onclick: () => openCommandDrawer(c) });
+    const ic = el('div', { class: 'item-icon' });
+    ic.innerHTML = icon('<polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/>');
+    row.appendChild(ic);
+    const txt = el('div', {});
+    txt.appendChild(el('div', { class: 'item-name' }, c.name));
+    txt.appendChild(el('div', { class: 'item-desc' }, c.desc));
+    row.appendChild(txt);
+    row.appendChild(el('span', { class: `pill ${c.invokes === 'agent' ? 'purple' : c.invokes === 'mcp' ? 'teal' : 'info'}` }, `→ ${c.invokes}`));
+    row.appendChild(el('span', { class: 'pill' }, c.plugin));
+    wrap.appendChild(row);
+  });
+  root.appendChild(wrap);
+}
+
+function openCommandDrawer(c) {
+  const head = `<div><div style="font-family:var(--font-mono); font-size:15px; font-weight:500;">${c.name}</div>
+    <div style="font-size:12px; color:var(--text-3); margin-top:2px;">${c.plugin === 'built-in' ? 'Built into Claude Code' : 'from ' + c.plugin}</div></div>`;
+  const body = `
+    <div class="drawer-section">
+      <div class="drawer-section-label">Description</div>
+      <div class="drawer-section-body">${c.desc}</div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-label">Invokes</div>
+      <div class="drawer-section-body"><span class="pill ${c.invokes === 'agent' ? 'purple' : c.invokes === 'mcp' ? 'teal' : 'info'}">${c.invokes}</span></div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-label">Source file</div>
+      <div class="code-block">.claude/commands/${c.name.split(':').pop()}.md</div>
+    </div>`;
+  openDrawer(head, body);
+}
+
+function renderAgents(root) {
+  root.appendChild(el('div', { class: 'page-header' }, [
+    el('h1', { class: 'page-title' }, 'Subagents'),
+    el('p', { class: 'page-desc' }, 'Specialized agents that run in isolated contexts. Each declares which tools it may use.')
+  ]));
+
+  data.agents.forEach(a => {
+    const card = el('div', { class: 'agent-card' });
+    const head = el('div', { class: 'agent-head' });
+    head.appendChild(el('div', { class: 'agent-avatar' }, a.name.split('-').map(s => s[0].toUpperCase()).slice(0, 2).join('')));
+    const info = el('div', { style: 'flex:1' });
+    info.appendChild(el('div', { class: 'agent-name' }, a.name));
+    info.appendChild(el('div', { class: 'agent-meta' }, [
+      `from `,
+      el('span', { style: 'font-family:var(--font-mono);' }, a.plugin),
+      ` · model: `,
+      el('span', { style: 'font-family:var(--font-mono);' }, a.model)
+    ]));
+    head.appendChild(info);
+    const modelPill = el('span', { class: `pill ${a.model === 'opus' ? 'pink' : a.model === 'haiku' ? 'success' : 'purple'}` }, a.model);
+    head.appendChild(modelPill);
+    card.appendChild(head);
+
+    card.appendChild(el('div', { style: 'font-size:13px; color:var(--text-2); margin: 2px 0 10px;' }, a.desc));
+
+    const toolsLabel = el('div', { style: 'font-size:11px; color:var(--text-3); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px;' }, 'Tool grants');
+    card.appendChild(toolsLabel);
+    const tools = el('div', { class: 'agent-tools' });
+    a.tools.forEach(t => tools.appendChild(el('span', { class: 'tool-chip granted' }, t)));
+    a.denied.forEach(t => tools.appendChild(el('span', { class: 'tool-chip denied' }, t)));
+    card.appendChild(tools);
+    root.appendChild(card);
+  });
+}
+
+function renderSkills(root) {
+  root.appendChild(el('div', { class: 'page-header' }, [
+    el('h1', { class: 'page-title' }, 'Skills'),
+    el('p', { class: 'page-desc' }, 'Reusable capabilities. Auto-invoke skills load when their description matches the conversation; manual ones run with /slash.')
+  ]));
+
+  const auto = data.skills.filter(s => s.autoInvoke);
+  const manual = data.skills.filter(s => !s.autoInvoke);
+
+  [['Auto-invoked', auto, 'Loaded automatically when relevant'], ['Manual only', manual, 'Triggered with /skill-name']].forEach(([title, list, sub]) => {
+    const sec = el('div', { class: 'section' });
+    sec.appendChild(el('div', { class: 'section-header' }, [
+      el('div', {}, [
+        el('div', { class: 'section-title' }, title),
+        el('div', { style: 'font-size:12px; color:var(--text-3); margin-top:2px;' }, sub)
+      ])
+    ]));
+    const wrap = el('div', { class: 'table-wrap' });
+    list.forEach(s => {
+      const row = el('div', { class: 'item-row' });
+      const ic = el('div', { class: 'item-icon', style: 'background:var(--purple-soft); color:var(--purple);' });
+      ic.innerHTML = icon('<polyline points="20 6 9 17 4 12"/>');
+      row.appendChild(ic);
+      const txt = el('div', {});
+      txt.appendChild(el('div', { class: 'item-name' }, s.name));
+      txt.appendChild(el('div', { class: 'item-desc' }, s.desc));
+      row.appendChild(txt);
+      row.appendChild(el('span', { class: 'pill' }, s.plugin));
+      row.appendChild(el('span', { class: `pill ${s.autoInvoke ? 'success' : ''}` }, s.autoInvoke ? 'auto' : 'manual'));
+      wrap.appendChild(row);
+    });
+    sec.appendChild(wrap);
+    root.appendChild(sec);
+  });
+}
+
+function renderHooks(root) {
+  root.appendChild(el('div', { class: 'page-header' }, [
+    el('h1', { class: 'page-title' }, 'Hooks'),
+    el('p', { class: 'page-desc' }, 'Scripts that fire at lifecycle checkpoints. Use them to enforce things prompts can\'t guarantee.')
+  ]));
+
+  root.appendChild(renderHookLifecycle());
+
+  // Group by event
+  const grouped = {};
+  data.hooks.forEach(h => { (grouped[h.event] = grouped[h.event] || []).push(h); });
+
+  Object.entries(grouped).forEach(([event, hooks]) => {
+    const sec = el('div', { class: 'section' });
+    sec.appendChild(el('div', { class: 'section-header' }, [
+      el('div', { class: 'section-title', style: 'font-family:var(--font-mono); font-size:13px;' }, event)
+    ]));
+    const wrap = el('div', { class: 'table-wrap' });
+    wrap.appendChild(el('div', { class: 'table-head' }, [
+      el('div', {}, ''),
+      el('div', {}, 'Type'),
+      el('div', {}, 'Action'),
+      el('div', {}, 'Source')
+    ]));
+    hooks.forEach(h => {
+      const row = el('div', { class: 'hook-row', onclick: () => openHookDrawer(h) });
+      const ic = el('div', { class: 'hook-type-icon', style: `background: ${h.type === 'command' ? 'var(--info-soft)' : h.type === 'prompt' ? 'var(--purple-soft)' : 'var(--teal-soft)'}; color: ${h.type === 'command' ? 'var(--info)' : h.type === 'prompt' ? 'var(--purple)' : 'var(--teal)'}` });
+      ic.innerHTML = icon(h.type === 'command' ? '<polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/>' : h.type === 'prompt' ? '<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 14v.01M12 7v6"/>' : '<circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>');
+      row.appendChild(ic);
+      const meta = el('div', {});
+      meta.appendChild(el('div', { class: 'hook-event' }, h.type));
+      meta.appendChild(el('div', { class: 'hook-event-meta' }, `matcher: ${h.matcher}`));
+      row.appendChild(meta);
+      row.appendChild(el('div', { class: 'hook-cmd' }, h.cmd));
+      row.appendChild(el('div', { class: 'hook-source' }, h.source));
+      wrap.appendChild(row);
+    });
+    sec.appendChild(wrap);
+    root.appendChild(sec);
+  });
+}
+
+function openHookDrawer(h) {
+  const head = `<div><div style="font-size:15px; font-weight:500;">${h.event} hook</div>
+    <div style="font-size:12px; color:var(--text-3); margin-top:2px;">type: <span style="font-family:var(--font-mono)">${h.type}</span></div></div>`;
+  const body = `
+    <div class="drawer-section">
+      <div class="drawer-section-label">What it does</div>
+      <div class="drawer-section-body">${h.desc}</div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-label">Matcher</div>
+      <div class="code-block">${h.matcher}</div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-label">Action</div>
+      <div class="code-block">${h.cmd}</div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-label">Defined in</div>
+      <div class="drawer-section-body" style="font-family:var(--font-mono); font-size:12px;">${h.source}</div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-label">Configuration</div>
+      <div class="code-block">{
+  "${h.event}": [
+    {
+      "matcher": "${h.matcher}",
+      "hooks": [{
+        "type": "${h.type}",
+        "command": "${h.cmd}"
+      }]
+    }
+  ]
+}</div>
+    </div>`;
+  openDrawer(head, body);
+}
+
+function renderMcp(root) {
+  root.appendChild(el('div', { class: 'page-header' }, [
+    el('h1', { class: 'page-title' }, 'MCP servers'),
+    el('p', { class: 'page-desc' }, 'External tool servers connected over the Model Context Protocol. Each exposes tools Claude can call.')
+  ]));
+
+  const wrap = el('div', { class: 'table-wrap' });
+  data.mcp.forEach(m => {
+    const row = el('div', { class: 'mcp-row' });
+    const ic = el('div', { class: 'mcp-icon' });
+    ic.innerHTML = icon('<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>');
+    row.appendChild(ic);
+    const info = el('div', {});
+    info.appendChild(el('div', { class: 'mcp-name' }, m.name));
+    info.appendChild(el('div', { class: 'mcp-url' }, m.url));
+    row.appendChild(info);
+    row.appendChild(el('div', { class: 'mcp-tools-count' }, `${m.tools} tools`));
+    const status = el('span', { class: `pill ${m.status === 'connected' ? 'success' : 'warning'}` }, [
+      m.status === 'connected' ? el('span', { class: 'pulse' }) : el('span', { style: 'width:6px; height:6px; border-radius:50%; background:var(--warning); display:inline-block; margin-right:4px;' }),
+      m.status
+    ]);
+    row.appendChild(status);
+    wrap.appendChild(row);
+  });
+  root.appendChild(wrap);
+}
+
+function renderMemory(root) {
+  root.appendChild(el('div', { class: 'page-header' }, [
+    el('h1', { class: 'page-title' }, 'CLAUDE.md memory'),
+    el('p', { class: 'page-desc' }, 'Project-level memory loaded at every session start. Read-only here.')
+  ]));
+  const wrap = el('div', { class: 'table-wrap', style: 'padding: 20px 24px;' });
+  wrap.innerHTML = `<pre style="font-family:var(--font-mono); font-size:12px; color:var(--text); white-space:pre-wrap; line-height:1.65; margin:0;">
+# Vamshi Suram project conventions
+
+## Stack
+- Astro + Cloudflare Pages for the marketing site
+- Twenty CRM for customer data, with custom HTTP Request workflows
+- Claude API + MinIO for the invoice-analyser pipeline
+
+## Code style
+- Biome for lint and format. Run on every write (enforced by hook).
+- TypeScript strict mode. No \`any\`. Prefer discriminated unions.
+- No commits until I approve. Plan before implementation.
+
+## Working agreements
+- Write tests first when touching the OCR pipeline.
+- Use the vs-blog-style skill for any post draft.
+- Pull tasks from /backlog:list before suggesting work.
+</pre>`;
+  root.appendChild(wrap);
+}
+
+function renderPermissions(root) {
+  root.appendChild(el('div', { class: 'page-header' }, [
+    el('h1', { class: 'page-title' }, 'Permissions'),
+    el('p', { class: 'page-desc' }, 'Allow, deny, and ask rules that gate every tool call.')
+  ]));
+  const sections = [
+    { title: 'Always allow', tone: 'success', rules: ['Read(**)', 'Grep(**)', 'Glob(**)', 'Bash(git status)', 'Bash(git diff *)', 'Bash(pnpm test*)'] },
+    { title: 'Always deny', tone: 'pink', rules: ['Bash(rm -rf *)', 'Bash(git push --force*)', 'Write(.env*)', 'Edit(.env*)'] },
+    { title: 'Ask first', tone: 'warning', rules: ['Bash(git push *)', 'Bash(pnpm publish*)', 'Write(/etc/**)'] }
+  ];
+  sections.forEach(s => {
+    const sec = el('div', { class: 'section' });
+    sec.appendChild(el('div', { class: 'section-header' }, [
+      el('div', { class: 'section-title' }, s.title)
+    ]));
+    const wrap = el('div', { class: 'table-wrap', style: 'padding: 12px;' });
+    s.rules.forEach(r => {
+      wrap.appendChild(el('div', { style: 'padding: 8px 12px; font-family:var(--font-mono); font-size:12px;' }, [
+        el('span', { class: `pill ${s.tone}`, style: 'margin-right: 10px;' }, s.title.split(' ')[0].toLowerCase()),
+        r
+      ]));
+    });
+    sec.appendChild(wrap);
+    root.appendChild(sec);
+  });
+}
+
+function renderSettings(root) {
+  root.appendChild(el('div', { class: 'page-header' }, [
+    el('h1', { class: 'page-title' }, 'Settings'),
+    el('p', { class: 'page-desc' }, 'Resolved configuration from project, user, and enterprise scopes.')
+  ]));
+  const wrap = el('div', { class: 'table-wrap', style: 'padding: 20px 24px;' });
+  wrap.innerHTML = `<pre style="font-family:var(--font-mono); font-size:12px; color:var(--text); white-space:pre-wrap; line-height:1.65; margin:0;">{
+  "model": "claude-opus-4-7",
+  "permissions": {
+    "allow": ["Read(**)", "Grep(**)", "Bash(git status)"],
+    "deny":  ["Bash(rm -rf *)", "Write(.env*)"]
+  },
+  "hooks": "see Hooks tab",
+  "mcpServers": "see MCP tab",
+  "env": {
+    "ANTHROPIC_LOG": "info",
+    "DISABLE_AUTOUPDATER": "0"
+  }
+}</pre>`;
+  root.appendChild(wrap);
+}
+
+// Initial render — fetch real data from server, fall back to mock if unreachable
+function bootstrap() {
+  fetch('/api/state')
+    .then(r => r.ok ? r.json() : Promise.reject(new Error('non-200')))
+    .then(real => {
+      data = Object.assign({}, data, real);
+      navigate('overview');
+    })
+    .catch(() => navigate('overview'));
+}
+bootstrap();
+</script>
+
+</body>
+</html>
