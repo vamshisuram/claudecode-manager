@@ -751,6 +751,16 @@
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
         <span class="nav-text">Overview</span>
       </div>
+      <div class="nav-item" data-route="sessions">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="nav-text">Sessions</span>
+        <span class="nav-count" data-count="sessions">·</span>
+      </div>
+      <div class="nav-item" data-route="marketplace">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1-5h16l1 5"/><path d="M3 9v11h18V9"/><path d="M9 22V12h6v10"/></svg>
+        <span class="nav-text">Marketplace</span>
+        <span class="nav-count" data-count="marketplace">·</span>
+      </div>
     </div>
 
     <div class="nav-group">
@@ -758,32 +768,32 @@
       <div class="nav-item" data-route="plugins">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
         <span class="nav-text">Plugins</span>
-        <span class="nav-count">7</span>
+        <span class="nav-count" data-count="plugins">·</span>
       </div>
       <div class="nav-item" data-route="commands">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
         <span class="nav-text">Slash commands</span>
-        <span class="nav-count">23</span>
+        <span class="nav-count" data-count="commands">·</span>
       </div>
       <div class="nav-item" data-route="agents">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>
         <span class="nav-text">Subagents</span>
-        <span class="nav-count">9</span>
+        <span class="nav-count" data-count="agents">·</span>
       </div>
       <div class="nav-item" data-route="skills">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20M5 5l14 14M19 5 5 19"/></svg>
         <span class="nav-text">Skills</span>
-        <span class="nav-count">14</span>
+        <span class="nav-count" data-count="skills">·</span>
       </div>
       <div class="nav-item" data-route="hooks">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
         <span class="nav-text">Hooks</span>
-        <span class="nav-count">11</span>
+        <span class="nav-count" data-count="hooks">·</span>
       </div>
       <div class="nav-item" data-route="mcp">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
         <span class="nav-text">MCP servers</span>
-        <span class="nav-count">5</span>
+        <span class="nav-count" data-count="mcp">·</span>
       </div>
     </div>
 
@@ -938,7 +948,9 @@ const routes = {
   mcp: renderMcp,
   memory: renderMemory,
   permissions: renderPermissions,
-  settings: renderSettings
+  settings: renderSettings,
+  sessions: (root) => renderSessions(root),
+  marketplace: (root) => renderMarketplace(root)
 };
 
 const routeLabels = {
@@ -951,7 +963,9 @@ const routeLabels = {
   mcp: 'MCP servers',
   memory: 'CLAUDE.md',
   permissions: 'Permissions',
-  settings: 'Settings'
+  settings: 'Settings',
+  sessions: 'Sessions',
+  marketplace: 'Marketplace'
 };
 
 function navigate(route) {
@@ -1476,15 +1490,492 @@ function renderSettings(root) {
   root.appendChild(wrap);
 }
 
+// ======================== OVERRIDES & NEW RENDERERS =========================
+
+const escHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// Override overview: prepend a conflict banner if any
+const _origOverview = renderOverview;
+renderOverview = function(root) {
+  if (data.conflicts && data.conflicts.length) {
+    const banner = el('div', { class: 'section', style: 'border:1px solid var(--accent-border); background: var(--accent-soft); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 16px;' });
+    banner.appendChild(el('div', { style: 'font-weight:500; margin-bottom: 6px; color: var(--accent);' }, `${data.conflicts.length} issue${data.conflicts.length === 1 ? '' : 's'} detected`));
+    data.conflicts.slice(0, 5).forEach(c => {
+      const row = el('div', { style: 'font-size:12px; color: var(--text-2); margin: 4px 0;' });
+      row.innerHTML = `<strong style="color:var(--text);">${escHtml(c.title)}</strong> <span style="color:var(--text-3);">— ${escHtml(c.detail)}</span>`;
+      banner.appendChild(row);
+    });
+    if (data.conflicts.length > 5) {
+      banner.appendChild(el('div', { style: 'font-size:11px; color: var(--text-3); margin-top: 6px;' }, `+ ${data.conflicts.length - 5} more`));
+    }
+    root.appendChild(banner);
+  }
+  _origOverview(root);
+};
+
+// Override settings: show 3 source files
+renderSettings = function(root) {
+  root.appendChild(el('div', { class: 'page-header' }, [
+    el('h1', { class: 'page-title' }, 'Settings'),
+    el('p', { class: 'page-desc' }, 'Three layers of configuration. Project-local overrides project, project overrides user. Files shown as-is — no merging.')
+  ]));
+  const sources = (data.settings && data.settings.sources) || [];
+  sources.forEach(s => {
+    const sec = el('div', { class: 'section' });
+    sec.appendChild(el('div', { class: 'section-header' }, [
+      el('div', {}, [
+        el('div', { class: 'section-title' }, s.scope + ' settings'),
+        el('div', { style: 'font-size:11px; color:var(--text-3); margin-top:2px; font-family:var(--font-mono);' }, s.path)
+      ]),
+      el('span', { class: `pill ${s.exists ? 'success' : ''}` }, s.exists ? 'present' : 'not set')
+    ]));
+    if (s.exists && s.content) {
+      const wrap = el('div', { class: 'table-wrap', style: 'padding: 16px 20px;' });
+      wrap.innerHTML = `<pre style="font-family:var(--font-mono); font-size:12px; color:var(--text); white-space:pre-wrap; line-height:1.6; margin:0;">${escHtml(JSON.stringify(s.content, null, 2))}</pre>`;
+      sec.appendChild(wrap);
+    } else {
+      sec.appendChild(el('div', { style: 'padding: 14px 20px; color: var(--text-3); font-size: 13px;' }, 'No file at this path.'));
+    }
+    root.appendChild(sec);
+  });
+};
+
+// Override hooks renderer: add health badge + click to open drawer with script preview
+renderHooks = function(root) {
+  root.appendChild(el('div', { class: 'page-header' }, [
+    el('h1', { class: 'page-title' }, 'Hooks'),
+    el('p', { class: 'page-desc' }, "Scripts that fire at lifecycle checkpoints. Use them to enforce things prompts can't guarantee.")
+  ]));
+  root.appendChild(renderHookLifecycle());
+
+  const grouped = {};
+  data.hooks.forEach(h => { (grouped[h.event] = grouped[h.event] || []).push(h); });
+  Object.entries(grouped).forEach(([event, hooks]) => {
+    const sec = el('div', { class: 'section' });
+    sec.appendChild(el('div', { class: 'section-header' }, [
+      el('div', { class: 'section-title', style: 'font-family:var(--font-mono); font-size:13px;' }, event)
+    ]));
+    const wrap = el('div', { class: 'table-wrap' });
+    hooks.forEach(h => {
+      const row = el('div', { class: 'hook-row', onclick: () => openHookDrawer(h) });
+      const ic = el('div', { class: 'hook-type-icon', style: `background: var(--info-soft); color: var(--info)` });
+      ic.innerHTML = icon('<polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/>');
+      row.appendChild(ic);
+      const meta = el('div', {});
+      meta.appendChild(el('div', { class: 'hook-event' }, h.type || 'command'));
+      meta.appendChild(el('div', { class: 'hook-event-meta' }, `matcher: ${h.matcher}`));
+      row.appendChild(meta);
+      row.appendChild(el('div', { class: 'hook-cmd' }, h.cmd));
+      const right = el('div', { style: 'display:flex; flex-direction:column; gap:4px; align-items:flex-end;' });
+      if (h.health === 'broken') right.appendChild(el('span', { class: 'pill pink' }, 'broken'));
+      else if (h.scriptKind === 'script' && h.scriptExists) right.appendChild(el('span', { class: 'pill success' }, h.executable ? 'ok' : 'not exec'));
+      right.appendChild(el('div', { class: 'hook-source', style: 'font-size:11px;' }, h.source));
+      row.appendChild(right);
+      wrap.appendChild(row);
+    });
+    sec.appendChild(wrap);
+    root.appendChild(sec);
+  });
+};
+
+openHookDrawer = function(h) {
+  const head = `<div><div style="font-size:15px; font-weight:500;">${escHtml(h.event)} hook</div>
+    <div style="font-size:12px; color:var(--text-3); margin-top:2px;">type: <span style="font-family:var(--font-mono)">${escHtml(h.type)}</span></div></div>`;
+  let body = `
+    <div class="drawer-section">
+      <div class="drawer-section-label">Matcher</div>
+      <div class="code-block">${escHtml(h.matcher)}</div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-label">Command</div>
+      <div class="code-block">${escHtml(h.cmd)}</div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-label">Defined in</div>
+      <div class="drawer-section-body" style="font-family:var(--font-mono); font-size:12px;">${escHtml(h.source)}</div>
+    </div>`;
+  if (h.scriptPath) {
+    const healthBadge = h.health === 'broken'
+      ? '<span class="pill pink">missing on disk</span>'
+      : `<span class="pill success">found</span> ${h.executable === false ? '<span class="pill warning">not executable</span>' : ''}`;
+    body += `
+    <div class="drawer-section">
+      <div class="drawer-section-label">Referenced script</div>
+      <div class="drawer-section-body" style="font-family:var(--font-mono); font-size:12px; margin-bottom:6px;">${escHtml(h.scriptPath)}</div>
+      <div style="margin-bottom:8px;">${healthBadge}</div>
+      <div id="hook-script-preview" class="code-block" style="max-height:320px; overflow:auto;">Loading…</div>
+    </div>`;
+  }
+  openDrawer(head, body);
+  if (h.scriptPath && h.health !== 'broken') {
+    fetch('/api/script?path=' + encodeURIComponent(h.scriptPath))
+      .then(r => r.json())
+      .then(d => {
+        const node = document.getElementById('hook-script-preview');
+        if (node) node.textContent = d.content || '(empty)';
+      })
+      .catch(() => {
+        const node = document.getElementById('hook-script-preview');
+        if (node) node.textContent = '(failed to load)';
+      });
+  }
+};
+
+// Override MCP: include scope and configured/connected
+renderMcp = function(root) {
+  root.appendChild(el('div', { class: 'page-header' }, [
+    el('h1', { class: 'page-title' }, 'MCP servers'),
+    el('p', { class: 'page-desc' }, 'External tool servers connected over the Model Context Protocol. "configured" means present in config; live status requires a session.')
+  ]));
+  const wrap = el('div', { class: 'table-wrap' });
+  data.mcp.forEach(m => {
+    const row = el('div', { class: 'mcp-row' });
+    const ic = el('div', { class: 'mcp-icon' });
+    ic.innerHTML = icon('<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>');
+    row.appendChild(ic);
+    const info = el('div', {});
+    info.appendChild(el('div', { class: 'mcp-name' }, m.name));
+    info.appendChild(el('div', { class: 'mcp-url' }, m.url));
+    row.appendChild(info);
+    row.appendChild(el('span', { class: 'pill' }, m.scope || 'user'));
+    row.appendChild(el('span', { class: 'pill' }, m.transport || ''));
+    row.appendChild(el('span', { class: `pill ${m.status === 'connected' ? 'success' : ''}` }, m.status || 'configured'));
+    wrap.appendChild(row);
+  });
+  if (!data.mcp.length) wrap.appendChild(el('div', { style: 'padding: 16px 20px; color: var(--text-3);' }, 'No MCP servers configured.'));
+  root.appendChild(wrap);
+};
+
+// Override memory to show real CLAUDE.md text
+renderMemory = function(root) {
+  root.appendChild(el('div', { class: 'page-header' }, [
+    el('h1', { class: 'page-title' }, 'CLAUDE.md memory'),
+    el('p', { class: 'page-desc' }, 'Project-level memory loaded at every session start. Read-only here.')
+  ]));
+  const wrap = el('div', { class: 'table-wrap', style: 'padding: 20px 24px;' });
+  const txt = typeof data.memory === 'string' ? data.memory : '(no memory file)';
+  wrap.innerHTML = `<pre style="font-family:var(--font-mono); font-size:12px; color:var(--text); white-space:pre-wrap; line-height:1.65; margin:0;">${escHtml(txt)}</pre>`;
+  root.appendChild(wrap);
+};
+
+// Override permissions to use real data
+renderPermissions = function(root) {
+  root.appendChild(el('div', { class: 'page-header' }, [
+    el('h1', { class: 'page-title' }, 'Permissions'),
+    el('p', { class: 'page-desc' }, 'Allow, deny, and ask rules that gate every tool call.')
+  ]));
+  const p = data.permissions || { allow: [], deny: [], ask: [] };
+  const sections = [
+    { title: 'Always allow', tone: 'success', rules: p.allow || [] },
+    { title: 'Always deny', tone: 'pink', rules: p.deny || [] },
+    { title: 'Ask first', tone: 'warning', rules: p.ask || [] }
+  ];
+  sections.forEach(s => {
+    const sec = el('div', { class: 'section' });
+    sec.appendChild(el('div', { class: 'section-header' }, [el('div', { class: 'section-title' }, `${s.title} (${s.rules.length})`)]));
+    const wrap = el('div', { class: 'table-wrap', style: 'padding: 12px;' });
+    if (!s.rules.length) wrap.appendChild(el('div', { style: 'padding: 8px 12px; color: var(--text-3); font-size: 13px;' }, 'No rules.'));
+    s.rules.forEach(r => {
+      wrap.appendChild(el('div', { style: 'padding: 8px 12px; font-family:var(--font-mono); font-size:12px;' }, [
+        el('span', { class: `pill ${s.tone}`, style: 'margin-right: 10px;' }, s.title.split(' ')[0].toLowerCase()),
+        r
+      ]));
+    });
+    sec.appendChild(wrap);
+    root.appendChild(sec);
+  });
+};
+
+// Override plugin drawer with real cross-refs
+openPluginDrawer = function(p) {
+  const head = `
+    <div style="display:flex; gap:12px; align-items:flex-start;">
+      <div class="card-icon" style="background: var(--accent-soft); color: var(--accent); width:40px; height:40px; font-size:14px;">${escHtml(p.initial || '··')}</div>
+      <div>
+        <div style="font-size:16px; font-weight:500;">${escHtml(p.name)}</div>
+        <div style="font-size:12px; color:var(--text-3); font-family:var(--font-mono); margin-top:2px;">${escHtml(p.source)}${p.version ? ' · v' + escHtml(p.version) : ''}</div>
+      </div>
+    </div>`;
+  const myCommands = (data.commands || []).filter(c => c.plugin === p.name);
+  const myAgents = (data.agents || []).filter(a => a.plugin === p.name);
+  const myHooks = (data.hooks || []).filter(h => h.source && h.source.includes(p.name));
+  const mySkills = (data.skills || []).filter(s => s.plugin === p.name);
+  const listOrEmpty = (arr, fmt) => arr.length
+    ? arr.map(fmt).join('')
+    : '<div style="color:var(--text-3); font-size:12px;">none</div>';
+  const body = `
+    <div class="drawer-section">
+      <div class="drawer-section-label">About</div>
+      <div class="drawer-section-body">${escHtml(p.desc)}</div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-label">Install path</div>
+      <div class="drawer-section-body" style="font-family:var(--font-mono); font-size:11px; color:var(--text-3);">${escHtml(p.installPath || '')}</div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-label">Slash commands (${myCommands.length})</div>
+      <div class="drawer-section-body">${listOrEmpty(myCommands, c => `<div style="font-family:var(--font-mono); font-size:12px; padding:4px 0;">${escHtml(c.name)}</div>`)}</div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-label">Subagents (${myAgents.length})</div>
+      <div class="drawer-section-body">${listOrEmpty(myAgents, a => `<div style="font-family:var(--font-mono); font-size:12px; padding:4px 0;">${escHtml(a.name)} <span style="color:var(--text-3);">— ${escHtml(a.model)}</span></div>`)}</div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-label">Hooks (${myHooks.length})</div>
+      <div class="drawer-section-body">${listOrEmpty(myHooks, h => `<div style="font-size:12px; padding:4px 0;"><span style="font-family:var(--font-mono);">${escHtml(h.event)}</span> <span style="color:var(--text-3);">${escHtml(h.matcher)}</span></div>`)}</div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-label">Skills (${mySkills.length})</div>
+      <div class="drawer-section-body">${listOrEmpty(mySkills, s => `<div style="font-family:var(--font-mono); font-size:12px; padding:4px 0;">${escHtml(s.name)}</div>`)}</div>
+    </div>`;
+  openDrawer(head, body);
+};
+
+// Override command drawer with linked agents
+openCommandDrawer = function(c) {
+  const head = `<div><div style="font-family:var(--font-mono); font-size:15px; font-weight:500;">${escHtml(c.name)}</div>
+    <div style="font-size:12px; color:var(--text-3); margin-top:2px;">${c.plugin === 'built-in' ? 'Built into Claude Code' : 'from ' + escHtml(c.plugin)}</div></div>`;
+  const linked = c.invokesAgents || [];
+  const body = `
+    <div class="drawer-section">
+      <div class="drawer-section-label">Description</div>
+      <div class="drawer-section-body">${escHtml(c.desc)}</div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-label">Source file</div>
+      <div class="code-block">${escHtml(c.source || '')}</div>
+    </div>
+    ${linked.length ? `<div class="drawer-section">
+      <div class="drawer-section-label">References agents</div>
+      <div class="drawer-section-body">${linked.map(n => `<span class="pill purple" style="margin-right:6px;">${escHtml(n)}</span>`).join('')}</div>
+    </div>` : ''}`;
+  openDrawer(head, body);
+};
+
+// Sessions renderer
+function renderSessions(root) {
+  const s = data.sessions || { totalSessions: 0, totalMessages: 0, projectCount: 0, projects: [], recent: [] };
+  root.appendChild(el('div', { class: 'page-header' }, [
+    el('h1', { class: 'page-title' }, 'Sessions'),
+    el('p', { class: 'page-desc' }, 'Activity across all projects in ~/.claude/projects. Sessions, messages, and most-recent context.')
+  ]));
+  const stats = [
+    { label: 'Total sessions', value: s.totalSessions },
+    { label: 'Total messages', value: s.totalMessages },
+    { label: 'Projects', value: s.projectCount }
+  ];
+  const strip = el('div', { class: 'stat-strip' });
+  stats.forEach(st => {
+    const c = el('div', { class: 'stat' });
+    c.appendChild(el('div', { class: 'stat-label' }, st.label));
+    c.appendChild(el('div', { class: 'stat-value' }, String(st.value)));
+    strip.appendChild(c);
+  });
+  root.appendChild(strip);
+
+  const sec1 = el('div', { class: 'section' });
+  sec1.appendChild(el('div', { class: 'section-header' }, [el('div', { class: 'section-title' }, 'Most active projects')]));
+  const wrap1 = el('div', { class: 'table-wrap' });
+  s.projects.forEach(p => {
+    const row = el('div', { class: 'item-row' });
+    const txt = el('div', {});
+    txt.appendChild(el('div', { class: 'item-name', style: 'font-family:var(--font-mono); font-size:12px;' }, p.projectPath));
+    txt.appendChild(el('div', { class: 'item-desc' }, `${p.sessionCount} sessions · ${p.messageCount} messages · last ${new Date(p.lastModified).toLocaleString()}`));
+    row.appendChild(txt);
+    wrap1.appendChild(row);
+  });
+  sec1.appendChild(wrap1);
+  root.appendChild(sec1);
+
+  const sec2 = el('div', { class: 'section' });
+  sec2.appendChild(el('div', { class: 'section-header' }, [el('div', { class: 'section-title' }, 'Recent sessions')]));
+  const wrap2 = el('div', { class: 'table-wrap' });
+  s.recent.forEach(r => {
+    const row = el('div', { class: 'item-row' });
+    const txt = el('div', {});
+    txt.appendChild(el('div', { class: 'item-name' }, r.summary));
+    txt.appendChild(el('div', { class: 'item-desc', style: 'font-family:var(--font-mono); font-size:11px;' }, `${r.projectPath} · ${r.messageCount} msgs · ${r.modified ? new Date(r.modified).toLocaleString() : ''}`));
+    row.appendChild(txt);
+    if (r.gitBranch) row.appendChild(el('span', { class: 'pill' }, r.gitBranch));
+    wrap2.appendChild(row);
+  });
+  sec2.appendChild(wrap2);
+  root.appendChild(sec2);
+}
+
+// Marketplace renderer
+function renderMarketplace(root) {
+  const mks = data.marketplaces || [];
+  root.appendChild(el('div', { class: 'page-header' }, [
+    el('h1', { class: 'page-title' }, 'Marketplace'),
+    el('p', { class: 'page-desc' }, 'Plugins available from your configured marketplaces. Click a card to see the source.')
+  ]));
+  const filterInput = el('input', { class: 'search', placeholder: 'Filter plugins…', style: 'width:100%; margin-bottom:12px;' });
+  root.appendChild(filterInput);
+  const container = el('div', {});
+  root.appendChild(container);
+
+  function paint(filter) {
+    container.innerHTML = '';
+    mks.forEach(mk => {
+      const matched = mk.plugins.filter(p =>
+        !filter ||
+        p.name.toLowerCase().includes(filter) ||
+        (p.description || '').toLowerCase().includes(filter) ||
+        (p.category || '').toLowerCase().includes(filter)
+      );
+      if (!matched.length) return;
+      const sec = el('div', { class: 'section' });
+      sec.appendChild(el('div', { class: 'section-header' }, [
+        el('div', {}, [
+          el('div', { class: 'section-title' }, mk.name),
+          el('div', { style: 'font-size:12px; color:var(--text-3); margin-top:2px;' }, `${mk.installedCount} of ${mk.pluginCount} installed · ${mk.description || ''}`)
+        ])
+      ]));
+      const grid = el('div', { class: 'grid' });
+      matched.slice(0, 60).forEach(p => {
+        const card = el('div', { class: 'card' });
+        const head = el('div', { class: 'card-head' });
+        head.appendChild(el('div', { class: 'card-icon', style: 'background: var(--surface-2); color: var(--text-2);' }, (p.name[0] || '?').toUpperCase()));
+        const titleWrap = el('div', { style: 'flex: 1; min-width: 0;' });
+        titleWrap.appendChild(el('div', { class: 'card-title' }, p.name));
+        titleWrap.appendChild(el('div', { class: 'card-source' }, p.author || mk.name));
+        head.appendChild(titleWrap);
+        if (p.installed) head.appendChild(el('span', { class: 'pill success' }, 'installed'));
+        card.appendChild(head);
+        card.appendChild(el('div', { class: 'card-desc' }, p.description));
+        const foot = el('div', { class: 'card-foot' });
+        if (p.category) foot.appendChild(el('span', { class: 'pill' }, p.category));
+        if (p.homepage) {
+          const a = el('a', { href: p.homepage, target: '_blank', class: 'pill', style: 'text-decoration:none;' }, 'homepage');
+          foot.appendChild(a);
+        }
+        card.appendChild(foot);
+        grid.appendChild(card);
+      });
+      sec.appendChild(grid);
+      if (matched.length > 60) sec.appendChild(el('div', { style: 'font-size:11px; color: var(--text-3); padding: 8px 0;' }, `+ ${matched.length - 60} more — refine your search`));
+      container.appendChild(sec);
+    });
+  }
+  filterInput.addEventListener('input', e => paint(e.target.value.trim().toLowerCase()));
+  paint('');
+}
+
+// Update sidebar counts from real data
+function updateNavCounts() {
+  const counts = {
+    plugins: data.plugins?.length || 0,
+    commands: data.commands?.length || 0,
+    agents: data.agents?.length || 0,
+    skills: data.skills?.length || 0,
+    hooks: data.hooks?.length || 0,
+    mcp: data.mcp?.length || 0,
+    sessions: data.sessions?.totalSessions || 0,
+    marketplace: (data.marketplaces || []).reduce((s, m) => s + m.pluginCount, 0)
+  };
+  document.querySelectorAll('[data-count]').forEach(node => {
+    const k = node.getAttribute('data-count');
+    if (k in counts) node.textContent = counts[k];
+  });
+}
+
+// ======================== GLOBAL SEARCH =========================
+const searchInput = document.querySelector('.search');
+const searchPanel = document.createElement('div');
+searchPanel.id = 'search-panel';
+searchPanel.style.cssText = 'position:absolute; top:48px; right:24px; width:520px; max-height:480px; overflow:auto; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:0 8px 32px rgba(0,0,0,0.12); padding:8px; display:none; z-index:1000;';
+document.body.appendChild(searchPanel);
+
+function runSearch(q) {
+  q = q.trim().toLowerCase();
+  if (!q) { searchPanel.style.display = 'none'; return; }
+  const out = [];
+  const push = (kind, label, sub, route) => out.push({ kind, label, sub, route });
+  (data.plugins || []).forEach(p => {
+    if (p.name.toLowerCase().includes(q) || (p.desc || '').toLowerCase().includes(q))
+      push('plugin', p.name, p.desc, 'plugins');
+  });
+  (data.commands || []).forEach(c => {
+    if (c.name.toLowerCase().includes(q) || (c.desc || '').toLowerCase().includes(q))
+      push('command', c.name, c.plugin, 'commands');
+  });
+  (data.agents || []).forEach(a => {
+    if (a.name.toLowerCase().includes(q) || (a.desc || '').toLowerCase().includes(q))
+      push('agent', a.name, a.plugin, 'agents');
+  });
+  (data.skills || []).forEach(s => {
+    if (s.name.toLowerCase().includes(q) || (s.desc || '').toLowerCase().includes(q))
+      push('skill', s.name, s.plugin, 'skills');
+  });
+  (data.hooks || []).forEach(h => {
+    if ((h.cmd || '').toLowerCase().includes(q) || (h.event || '').toLowerCase().includes(q) || (h.matcher || '').toLowerCase().includes(q))
+      push('hook', `${h.event} · ${h.matcher}`, h.cmd, 'hooks');
+  });
+  (data.mcp || []).forEach(m => {
+    if (m.name.toLowerCase().includes(q)) push('mcp', m.name, m.url, 'mcp');
+  });
+  ((data.permissions || {}).allow || []).concat((data.permissions || {}).deny || [], (data.permissions || {}).ask || []).forEach(r => {
+    if (r.toLowerCase().includes(q)) push('permission', r, 'permission rule', 'permissions');
+  });
+  (data.marketplaces || []).forEach(mk => {
+    mk.plugins.forEach(p => {
+      if (p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q))
+        push('available', p.name, `${mk.name} · ${p.installed ? 'installed' : 'not installed'}`, 'marketplace');
+    });
+  });
+
+  searchPanel.innerHTML = '';
+  if (!out.length) {
+    searchPanel.innerHTML = '<div style="padding:12px; color:var(--text-3); font-size:13px;">No matches.</div>';
+  } else {
+    out.slice(0, 60).forEach(item => {
+      const row = document.createElement('div');
+      row.style.cssText = 'padding:8px 10px; border-radius:var(--radius); cursor:pointer; display:flex; gap:10px; align-items:center;';
+      row.onmouseenter = () => row.style.background = 'var(--surface-hover)';
+      row.onmouseleave = () => row.style.background = '';
+      row.onclick = () => { searchPanel.style.display = 'none'; searchInput.value = ''; navigate(item.route); };
+      const tag = document.createElement('span');
+      tag.className = 'pill';
+      tag.textContent = item.kind;
+      row.appendChild(tag);
+      const txt = document.createElement('div');
+      txt.style.cssText = 'flex:1; min-width:0;';
+      txt.innerHTML = `<div style="font-size:13px; font-weight:500;">${escHtml(item.label)}</div><div style="font-size:11px; color:var(--text-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escHtml(item.sub || '')}</div>`;
+      row.appendChild(txt);
+      searchPanel.appendChild(row);
+    });
+    if (out.length > 60) {
+      const more = document.createElement('div');
+      more.style.cssText = 'padding:6px 10px; font-size:11px; color:var(--text-3);';
+      more.textContent = `+ ${out.length - 60} more`;
+      searchPanel.appendChild(more);
+    }
+  }
+  searchPanel.style.display = 'block';
+}
+
+if (searchInput) {
+  searchInput.addEventListener('input', e => runSearch(e.target.value));
+  searchInput.addEventListener('focus', () => { if (searchInput.value.trim()) runSearch(searchInput.value); });
+  document.addEventListener('click', e => {
+    if (!searchPanel.contains(e.target) && e.target !== searchInput) searchPanel.style.display = 'none';
+  });
+}
+
 // Initial render — fetch real data from server, fall back to mock if unreachable
 function bootstrap() {
   fetch('/api/state')
     .then(r => r.ok ? r.json() : Promise.reject(new Error('non-200')))
     .then(real => {
       data = Object.assign({}, data, real);
+      updateNavCounts();
       navigate('overview');
     })
-    .catch(() => navigate('overview'));
+    .catch(() => {
+      updateNavCounts();
+      navigate('overview');
+    });
 }
 bootstrap();
 </script>

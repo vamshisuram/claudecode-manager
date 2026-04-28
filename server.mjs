@@ -310,12 +310,207 @@ function loadMemory() {
 }
 
 function loadSettings() {
-  const userSettings = readJSON(path.join(CLAUDE_DIR, 'settings.json')) || {};
+  const userPath = path.join(CLAUDE_DIR, 'settings.json');
+  const projectPath = path.join(process.cwd(), '.claude', 'settings.json');
+  const projectLocalPath = path.join(process.cwd(), '.claude', 'settings.local.json');
   return {
-    user: userSettings,
-    project: readJSON(path.join(process.cwd(), '.claude', 'settings.json')) || null,
-    projectLocal: readJSON(path.join(process.cwd(), '.claude', 'settings.local.json')) || null
+    sources: [
+      { scope: 'user', path: userPath, exists: exists(userPath), content: readJSON(userPath) },
+      { scope: 'project', path: projectPath, exists: exists(projectPath), content: readJSON(projectPath) },
+      { scope: 'project-local', path: projectLocalPath, exists: exists(projectLocalPath), content: readJSON(projectLocalPath) }
+    ],
+    user: readJSON(userPath) || {},
+    project: readJSON(projectPath) || null,
+    projectLocal: readJSON(projectLocalPath) || null
   };
+}
+
+// ---------- Ring 1 + Ring 2 additions ----------
+
+function loadMarketplaces(installedPlugins) {
+  const installedKeys = new Set(installedPlugins.map(p => p.id));
+  const root = path.join(CLAUDE_DIR, 'plugins', 'marketplaces');
+  const out = [];
+  for (const name of listDir(root)) {
+    const manifest =
+      readJSON(path.join(root, name, '.claude-plugin', 'marketplace.json')) ||
+      readJSON(path.join(root, name, 'marketplace.json'));
+    if (!manifest) continue;
+    const plugins = (manifest.plugins || []).map(pl => ({
+      name: pl.name,
+      description: pl.description || '',
+      author: pl.author?.name || manifest.owner?.name || '',
+      category: pl.category || '',
+      source: pl.source?.url || pl.source?.source || '',
+      homepage: pl.homepage || '',
+      installed: installedKeys.has(`${pl.name}@${name}`)
+    }));
+    out.push({
+      name,
+      description: manifest.description || '',
+      owner: manifest.owner?.name || '',
+      pluginCount: plugins.length,
+      installedCount: plugins.filter(p => p.installed).length,
+      plugins
+    });
+  }
+  return out;
+}
+
+function loadSessions() {
+  const root = path.join(CLAUDE_DIR, 'projects');
+  const projects = [];
+  let totalSessions = 0;
+  let totalMessages = 0;
+  const recent = [];
+  for (const dir of listDir(root)) {
+    const idx = readJSON(path.join(root, dir, 'sessions-index.json'));
+    if (!idx?.entries) continue;
+    const entries = idx.entries;
+    const messages = entries.reduce((s, e) => s + (e.messageCount || 0), 0);
+    const lastModified = entries.reduce((m, e) => Math.max(m, e.fileMtime || 0), 0);
+    projects.push({
+      key: dir,
+      projectPath: idx.originalPath || dir,
+      sessionCount: entries.length,
+      messageCount: messages,
+      lastModified
+    });
+    totalSessions += entries.length;
+    totalMessages += messages;
+    for (const e of entries) {
+      recent.push({
+        sessionId: e.sessionId,
+        projectPath: idx.originalPath || dir,
+        summary: e.summary || e.firstPrompt || '(no summary)',
+        messageCount: e.messageCount || 0,
+        modified: e.modified || (e.fileMtime ? new Date(e.fileMtime).toISOString() : null),
+        gitBranch: e.gitBranch || ''
+      });
+    }
+  }
+  recent.sort((a, b) => (b.modified || '').localeCompare(a.modified || ''));
+  projects.sort((a, b) => b.lastModified - a.lastModified);
+  return {
+    totalSessions,
+    totalMessages,
+    projectCount: projects.length,
+    projects: projects.slice(0, 50),
+    recent: recent.slice(0, 25)
+  };
+}
+
+function checkHookHealth(hooks) {
+  return hooks.map(h => {
+    const cmd = h.cmd || '';
+    // Try to extract a referenced file path from common patterns
+    let scriptPath = null;
+    let kind = 'inline';
+    const m =
+      cmd.match(/(?:node|bash|sh|python3?|deno|ruby)\s+["']?([^"'\s]+)["']?/) ||
+      cmd.match(/^["']?(\/[^"'\s]+\.(?:sh|js|mjs|ts|py|rb))/);
+    if (m) {
+      scriptPath = m[1];
+      kind = 'script';
+    }
+    let scriptExists = null;
+    let executable = null;
+    if (scriptPath) {
+      scriptExists = exists(scriptPath);
+      if (scriptExists) {
+        try {
+          const st = fs.statSync(scriptPath);
+          executable = !!(st.mode & 0o111);
+        } catch { executable = null; }
+      }
+    }
+    let status = 'ok';
+    if (scriptPath && !scriptExists) status = 'broken';
+    return { ...h, scriptPath, scriptKind: kind, scriptExists, executable, health: status };
+  });
+}
+
+function detectConflicts(state) {
+  const conflicts = [];
+
+  // Duplicate slash command names
+  const cmdByName = {};
+  for (const c of state.commands) {
+    (cmdByName[c.name] = cmdByName[c.name] || []).push(c.plugin);
+  }
+  for (const [name, owners] of Object.entries(cmdByName)) {
+    if (owners.length > 1) {
+      conflicts.push({
+        kind: 'duplicate-command',
+        severity: 'warning',
+        title: `Slash command \`${name}\` is defined in ${owners.length} places`,
+        detail: `Defined by: ${owners.join(', ')}`
+      });
+    }
+  }
+
+  // Duplicate agent names
+  const agentByName = {};
+  for (const a of state.agents) {
+    (agentByName[a.name] = agentByName[a.name] || []).push(a.plugin);
+  }
+  for (const [name, owners] of Object.entries(agentByName)) {
+    if (owners.length > 1) {
+      conflicts.push({
+        kind: 'duplicate-agent',
+        severity: 'warning',
+        title: `Subagent \`${name}\` is defined in ${owners.length} places`,
+        detail: `Defined by: ${owners.join(', ')}`
+      });
+    }
+  }
+
+  // Broken hooks
+  const broken = state.hooks.filter(h => h.health === 'broken');
+  for (const h of broken) {
+    conflicts.push({
+      kind: 'broken-hook',
+      severity: 'error',
+      title: `Hook references missing file`,
+      detail: `${h.event} hook can't find ${h.scriptPath} (${h.source})`
+    });
+  }
+
+  // Disconnected MCP
+  for (const m of state.mcp) {
+    if (m.status === 'disconnected') {
+      conflicts.push({
+        kind: 'mcp-disconnected',
+        severity: 'warning',
+        title: `MCP server \`${m.name}\` not connected`,
+        detail: m.url
+      });
+    }
+  }
+
+  return conflicts;
+}
+
+function buildCommandAgentLinks(commands, agents) {
+  const agentNames = new Set(agents.map(a => a.name));
+  for (const c of commands) {
+    if (!c.source || !exists(c.source)) { c.invokesAgents = []; continue; }
+    const text = readText(c.source) || '';
+    const mentioned = [];
+    for (const name of agentNames) {
+      if (text.includes(name)) mentioned.push(name);
+    }
+    c.invokesAgents = mentioned;
+  }
+}
+
+function readScriptPreview(scriptPath, maxBytes = 4000) {
+  if (!scriptPath || !exists(scriptPath)) return null;
+  try {
+    const buf = fs.readFileSync(scriptPath, 'utf8');
+    if (buf.length <= maxBytes) return buf;
+    return buf.slice(0, maxBytes) + `\n\n... (truncated, ${buf.length - maxBytes} more bytes)`;
+  } catch { return null; }
 }
 
 function lifecycleFromHooks(hooks) {
@@ -329,17 +524,24 @@ function lifecycleFromHooks(hooks) {
 
 function buildState() {
   const plugins = loadPlugins();
-  const hooks = loadHooks(plugins);
-  return {
+  const rawHooks = loadHooks(plugins);
+  const hooks = checkHookHealth(rawHooks);
+  const commands = loadCommands(plugins);
+  const agents = loadAgents(plugins);
+  buildCommandAgentLinks(commands, agents);
+  const mcp = loadMcp();
+  const state = {
     plugins,
-    commands: loadCommands(plugins),
-    agents: loadAgents(plugins),
+    commands,
+    agents,
     skills: loadSkills(plugins),
     hooks,
-    mcp: loadMcp(),
+    mcp,
     permissions: loadPermissions(),
     memory: loadMemory(),
     settings: loadSettings(),
+    marketplaces: loadMarketplaces(plugins),
+    sessions: loadSessions(),
     lifecycleEvents: lifecycleFromHooks(hooks),
     meta: {
       generatedAt: new Date().toISOString(),
@@ -347,12 +549,22 @@ function buildState() {
       cwd: process.cwd()
     }
   };
+  state.conflicts = detectConflicts(state);
+  return state;
 }
 
 const HTML_PATH = path.join(__dirname, 'claudecode-manager.html');
 
+// Allow file reads only inside these roots (safety boundary for /api/script)
+const ALLOWED_ROOTS = [CLAUDE_DIR, process.cwd()];
+function isPathSafe(p) {
+  const abs = path.resolve(p);
+  return ALLOWED_ROOTS.some(r => abs === r || abs.startsWith(r + path.sep));
+}
+
 const server = http.createServer((req, res) => {
-  if (req.url === '/api/state') {
+  const u = new URL(req.url, 'http://localhost');
+  if (u.pathname === '/api/state') {
     try {
       const state = buildState();
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -363,7 +575,19 @@ const server = http.createServer((req, res) => {
     }
     return;
   }
-  if (req.url === '/' || req.url === '/index.html') {
+  if (u.pathname === '/api/script') {
+    const p = u.searchParams.get('path');
+    if (!p || !isPathSafe(p)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'path missing or outside allowed roots' }));
+      return;
+    }
+    const content = readScriptPreview(p, 16000);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ path: p, exists: exists(p), content }));
+    return;
+  }
+  if (u.pathname === '/' || u.pathname === '/index.html') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     res.end(fs.readFileSync(HTML_PATH));
     return;
