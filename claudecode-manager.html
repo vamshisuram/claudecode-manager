@@ -829,6 +829,12 @@
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <input class="search" placeholder="Search anything…" />
+      <button id="refresh-btn" title="Refresh" style="background:transparent; border:1px solid var(--border); color:var(--text-2); width:30px; height:30px; border-radius:var(--radius); cursor:pointer; display:grid; place-items:center; margin-left:8px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
+      </button>
+      <button id="theme-btn" title="Theme" style="background:transparent; border:1px solid var(--border); color:var(--text-2); width:30px; height:30px; border-radius:var(--radius); cursor:pointer; display:grid; place-items:center; margin-left:6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
     </div>
 
     <div class="content" id="content"></div>
@@ -1962,6 +1968,121 @@ if (searchInput) {
     if (!searchPanel.contains(e.target) && e.target !== searchInput) searchPanel.style.display = 'none';
   });
 }
+
+// ======================== OPEN-IN-EDITOR HELPERS =========================
+function openPath(p, action) {
+  return fetch(`/api/open?path=${encodeURIComponent(p)}&action=${action}`).catch(() => {});
+}
+
+function pathActionsHtml(p) {
+  if (!p) return '';
+  const sp = JSON.stringify(p);
+  return ` <a href="#" onclick="event.preventDefault(); openPath(${sp},'open'); return false;" style="font-size:11px; color:var(--info); text-decoration:none; margin-left:8px;">open</a>` +
+         ` <a href="#" onclick="event.preventDefault(); openPath(${sp},'reveal'); return false;" style="font-size:11px; color:var(--info); text-decoration:none; margin-left:6px;">reveal</a>`;
+}
+
+// Re-decorate hook drawer script path + command drawer source with open/reveal links
+const _origHookDrawer = openHookDrawer;
+openHookDrawer = function(h) {
+  _origHookDrawer(h);
+  if (h.scriptPath) {
+    // find the scriptPath line in the drawer body and append actions
+    const body = document.getElementById('drawer-body');
+    if (!body) return;
+    body.querySelectorAll('.drawer-section-body').forEach(node => {
+      if (node.textContent.trim() === h.scriptPath) {
+        node.insertAdjacentHTML('beforeend', pathActionsHtml(h.scriptPath));
+      }
+    });
+  }
+};
+const _origCmdDrawer = openCommandDrawer;
+openCommandDrawer = function(c) {
+  _origCmdDrawer(c);
+  if (c.source) {
+    const body = document.getElementById('drawer-body');
+    if (!body) return;
+    body.querySelectorAll('.code-block').forEach(node => {
+      if (node.textContent.trim() === c.source) {
+        node.insertAdjacentHTML('beforeend', pathActionsHtml(c.source));
+      }
+    });
+  }
+};
+
+// Re-decorate settings sources with open/reveal
+const _origRenderSettings = renderSettings;
+renderSettings = function(root) {
+  _origRenderSettings(root);
+  const sources = (data.settings && data.settings.sources) || [];
+  const pathNodes = root.querySelectorAll('.section-header div[style*="font-family"]');
+  pathNodes.forEach(node => {
+    const p = node.textContent.trim();
+    if (sources.find(s => s.path === p && s.exists)) {
+      node.insertAdjacentHTML('beforeend', pathActionsHtml(p));
+    }
+  });
+};
+
+// ======================== THEME =========================
+(function setupTheme() {
+  // Add CSS overrides so [data-theme] beats prefers-color-scheme
+  const style = document.createElement('style');
+  style.textContent = `
+    html[data-theme="light"] {
+      --bg: #faf9f5; --surface: #ffffff; --surface-2: #f5f4ee; --surface-hover: #efeee7;
+      --border: rgba(20,20,20,0.08); --border-strong: rgba(20,20,20,0.14);
+      --text: #1a1a19; --text-2: #5f5e5a; --text-3: #888780;
+      --accent: #c96442; --accent-soft: #faece7; --accent-border: #f0997b;
+      --info: #185fa5; --info-soft: #e6f1fb; --success: #3b6d11; --success-soft: #eaf3de;
+      --warning: #854f0b; --warning-soft: #faeeda; --purple: #534ab7; --purple-soft: #eeedfe;
+      --teal: #0f6e56; --teal-soft: #e1f5ee; --pink: #993556; --pink-soft: #fbeaf0;
+    }
+    html[data-theme="dark"] {
+      --bg: #1a1a17; --surface: #232220; --surface-2: #2b2a27; --surface-hover: #34332f;
+      --border: rgba(255,255,255,0.08); --border-strong: rgba(255,255,255,0.14);
+      --text: #ecebe5; --text-2: #a8a7a0; --text-3: #807e77;
+      --accent: #f0997b; --accent-soft: rgba(240,153,123,0.12);
+      --info-soft: rgba(53,122,189,0.14); --success-soft: rgba(99,153,34,0.14);
+      --warning-soft: rgba(186,117,23,0.14); --purple-soft: rgba(127,119,221,0.14);
+      --teal-soft: rgba(29,158,117,0.14); --pink-soft: rgba(212,83,126,0.14);
+    }
+  `;
+  document.head.appendChild(style);
+
+  const order = ['system', 'light', 'dark'];
+  function apply(mode) {
+    if (mode === 'system') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', mode);
+    localStorage.setItem('ccm-theme', mode);
+    const btn = document.getElementById('theme-btn');
+    if (btn) btn.title = `Theme: ${mode} (click to cycle)`;
+  }
+  apply(localStorage.getItem('ccm-theme') || 'system');
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.addEventListener('click', () => {
+    const cur = localStorage.getItem('ccm-theme') || 'system';
+    apply(order[(order.indexOf(cur) + 1) % order.length]);
+  });
+})();
+
+// ======================== REFRESH =========================
+(function setupRefresh() {
+  const btn = document.getElementById('refresh-btn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    btn.style.opacity = '0.5';
+    fetch('/api/state')
+      .then(r => r.json())
+      .then(real => {
+        data = Object.assign({}, data, real);
+        updateNavCounts();
+        const route = (document.querySelector('.nav-item.active') || {}).dataset?.route || 'overview';
+        navigate(route);
+      })
+      .finally(() => { btn.style.opacity = '1'; });
+  });
+})();
 
 // Initial render — fetch real data from server, fall back to mock if unreachable
 function bootstrap() {

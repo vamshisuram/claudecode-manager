@@ -587,6 +587,37 @@ const server = http.createServer((req, res) => {
     res.end(JSON.stringify({ path: p, exists: exists(p), content }));
     return;
   }
+  if (u.pathname === '/api/open') {
+    const p = u.searchParams.get('path');
+    const action = u.searchParams.get('action') || 'open'; // 'open' | 'reveal'
+    if (!p || !isPathSafe(p) || !exists(p)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'path missing, outside allowed roots, or does not exist' }));
+      return;
+    }
+    import('node:child_process').then(({ spawn }) => {
+      let cmd, args;
+      if (process.platform === 'darwin') {
+        cmd = 'open';
+        args = action === 'reveal' ? ['-R', p] : [p];
+      } else if (process.platform === 'win32') {
+        cmd = 'explorer';
+        args = action === 'reveal' ? ['/select,', p] : [p];
+      } else {
+        cmd = 'xdg-open';
+        args = [action === 'reveal' ? path.dirname(p) : p];
+      }
+      try {
+        spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: String(e) }));
+      }
+    });
+    return;
+  }
   if (u.pathname === '/' || u.pathname === '/index.html') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     res.end(fs.readFileSync(HTML_PATH));
