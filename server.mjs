@@ -558,7 +558,7 @@ function buildState() {
   return state;
 }
 
-const HTML_PATH = path.join(__dirname, 'claudecode-manager.html');
+const HTML_PATH = path.join(__dirname, 'cc-manager.html');
 
 // Allow file reads only inside these roots (safety boundary for /api/script)
 const ALLOWED_ROOTS = [CLAUDE_DIR, process.cwd()];
@@ -632,11 +632,11 @@ const server = http.createServer((req, res) => {
   res.end('not found');
 });
 
-const PIDFILE = '/tmp/claudecode-manager.pid';
+const PIDFILE = '/tmp/cc-manager.pid';
 
 server.listen(PORT, () => {
   const url = `http://localhost:${PORT}`;
-  console.log(`claudecode-manager running at ${url}`);
+  console.log(`cc-manager running at ${url}`);
   try { fs.writeFileSync(PIDFILE, String(process.pid)); } catch {}
   if (!process.env.NO_OPEN) {
     const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';

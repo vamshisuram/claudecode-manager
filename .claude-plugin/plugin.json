@@ -1,9 +1,9 @@
 {
-  "name": "claudecode-manager",
+  "name": "cc-manager",
   "version": "0.1.0",
   "description": "Local web UI to inspect Claude Code plugins, agents, hooks, MCP servers, sessions, marketplaces, and settings.",
   "author": {
     "name": "Vamshi Suram"
   },
-  "homepage": "https://github.com/vamshisuram/claudecode-manager"
+  "homepage": "https://github.com/vamshisuram/cc-manager"
 }

@@ -29,6 +29,6 @@ Then summarize in compact terminal-friendly form:
 - All `conflicts[]` entries (title + detail)
 - Sessions: total, total messages, top 3 most-active projects
 
-End with: "Open the full UI with `/manager:open`."
+End with: "Open the full UI with `/cc-manager:open`."
 
 Keep the output dense and scannable. No prose paragraphs.

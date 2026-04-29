@@ -1,17 +1,17 @@
 {
-  "name": "claudecode-manager",
+  "name": "cc-manager",
   "version": "0.1.0",
   "description": "Local web UI to inspect Claude Code plugins, agents, hooks, MCP servers, and settings.",
   "type": "module",
   "bin": {
-    "claudecode-manager": "./server.mjs"
+    "cc-manager": "./server.mjs"
   },
   "scripts": {
     "start": "node server.mjs"
   },
   "files": [
     "server.mjs",
-    "claudecode-manager.html"
+    "cc-manager.html"
   ],
   "engines": {
     "node": ">=18"
@@ -20,6 +20,6 @@
   "author": "Vamshi Suram",
   "repository": {
     "type": "git",
-    "url": "https://github.com/vamshisuram/claudecode-manager.git"
+    "url": "https://github.com/vamshisuram/cc-manager.git"
   }
 }

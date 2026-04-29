@@ -1,4 +1,4 @@
-# claudecode-manager
+# cc-manager
 
 A local web UI to see and understand everything that shapes how Claude Code behaves on your machine.
 
@@ -22,7 +22,7 @@ In a terminal that's `ls`, `cat`, `jq`, `grep`, repeated until you've reconstruc
 
 Web is read-optimized. Visual layouts. Hover for detail. Click to drill in. Search across everything at once. Different tool for a different job.
 
-`claudecode-manager` is the read interface that pairs with Claude Code's terminal. Both are needed.
+`cc-manager` is the read interface that pairs with Claude Code's terminal. Both are needed.
 
 ---
 
@@ -45,7 +45,7 @@ Web is read-optimized. Visual layouts. Hover for detail. Click to drill in. Sear
 - Click a file path in any drawer to open it in your editor or reveal in Finder
 - Light / dark / system theme, persisted
 - Refresh button — pulls fresh state without restarting
-- Three slash commands: `/manager:open`, `/manager:close`, `/manager:doctor`
+- Three slash commands: `/cc-manager:open`, `/cc-manager:close`, `/cc-manager:doctor`
 
 ---
 
@@ -54,21 +54,21 @@ Web is read-optimized. Visual layouts. Hover for detail. Click to drill in. Sear
 ### As a Claude Code plugin (recommended)
 
 ```
-/plugin marketplace add vamshisuram/claudecode-manager
-/plugin install claudecode-manager
+/plugin marketplace add vamshisuram/cc
+/plugin install cc-manager
 ```
 
 Then:
 
-- `/manager:open` — start the server and open the UI in your browser
-- `/manager:close` — stop the server
-- `/manager:doctor` — terminal-only health summary (skip the browser when you only need the headline)
+- `/cc-manager:open` — start the server and open the UI in your browser
+- `/cc-manager:close` — stop the server
+- `/cc-manager:doctor` — terminal-only health summary (skip the browser when you only need the headline)
 
 ### Direct
 
 ```bash
-git clone https://github.com/vamshisuram/claudecode-manager.git
-cd claudecode-manager
+git clone https://github.com/vamshisuram/cc-manager.git
+cd cc-manager
 node server.mjs
 ```
 
@@ -117,7 +117,7 @@ PRs welcome. Issues even more welcome — tell me what's missing from the read s
 Two files. No build step. No npm dependencies.
 
 - `server.mjs` — plain Node http server, ~600 lines, reads from disk and exposes `/api/state`, `/api/script`, `/api/open`
-- `claudecode-manager.html` — single-page UI, ~2000 lines including styles, hydrates from `/api/state`
+- `cc-manager.html` — single-page UI, ~2000 lines including styles, hydrates from `/api/state`
 
 If the disk layout changes, you fix one file. If the UI changes, you fix one file. That's the whole pitch on the engineering side.
 
