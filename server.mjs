@@ -632,11 +632,21 @@ const server = http.createServer((req, res) => {
   res.end('not found');
 });
 
+const PIDFILE = '/tmp/claudecode-manager.pid';
+
 server.listen(PORT, () => {
   const url = `http://localhost:${PORT}`;
   console.log(`claudecode-manager running at ${url}`);
+  try { fs.writeFileSync(PIDFILE, String(process.pid)); } catch {}
   if (!process.env.NO_OPEN) {
     const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
     import('node:child_process').then(({ spawn }) => spawn(opener, [url], { detached: true, stdio: 'ignore' }).unref());
   }
 });
+
+const cleanup = () => {
+  try { if (fs.readFileSync(PIDFILE, 'utf8') == String(process.pid)) fs.unlinkSync(PIDFILE); } catch {}
+  process.exit(0);
+};
+process.on('SIGINT', cleanup);
+process.on('SIGTERM', cleanup);
