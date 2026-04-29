@@ -1298,7 +1298,7 @@ function renderSkills(root) {
     ]));
     const wrap = el('div', { class: 'table-wrap' });
     list.forEach(s => {
-      const row = el('div', { class: 'item-row' });
+      const row = el('div', { class: 'item-row', style: 'cursor:default;' });
       const ic = el('div', { class: 'item-icon', style: 'background:var(--purple-soft); color:var(--purple);' });
       ic.innerHTML = icon('<polyline points="20 6 9 17 4 12"/>');
       row.appendChild(ic);
@@ -1797,17 +1797,27 @@ function renderSessions(root) {
   });
   root.appendChild(strip);
 
+  const rowStyle = 'display:flex; align-items:center; gap:14px; padding:12px 16px; border-bottom:0.5px solid var(--border); cursor:default;';
+  const lastRow = (wrap) => { const c = wrap.lastElementChild; if (c) c.style.borderBottom = 'none'; };
+  const homePrefix = data.meta?.claudeDir ? data.meta.claudeDir.replace(/\/\.claude$/, '') : '';
+  const tildify = (p) => homePrefix && p.startsWith(homePrefix) ? '~' + p.slice(homePrefix.length) : p;
+
   const sec1 = el('div', { class: 'section' });
   sec1.appendChild(el('div', { class: 'section-header' }, [el('div', { class: 'section-title' }, 'Most active projects')]));
   const wrap1 = el('div', { class: 'table-wrap' });
   s.projects.forEach(p => {
-    const row = el('div', { class: 'item-row' });
-    const txt = el('div', {});
-    txt.appendChild(el('div', { class: 'item-name', style: 'font-family:var(--font-mono); font-size:12px;' }, p.projectPath));
-    txt.appendChild(el('div', { class: 'item-desc' }, `${p.sessionCount} sessions · ${p.messageCount} messages · last ${new Date(p.lastModified).toLocaleString()}`));
-    row.appendChild(txt);
+    const row = el('div', { style: rowStyle });
+    const left = el('div', { style: 'flex:1; min-width:0;' });
+    left.appendChild(el('div', { style: 'font-family:var(--font-mono); font-size:12px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;', title: p.projectPath }, tildify(p.projectPath)));
+    left.appendChild(el('div', { style: 'font-size:11px; color:var(--text-3); margin-top:2px;' }, `last ${new Date(p.lastModified).toLocaleString()}`));
+    row.appendChild(left);
+    const stats = el('div', { style: 'display:flex; gap:6px; flex-shrink:0;' });
+    stats.appendChild(el('span', { class: 'pill' }, `${p.sessionCount} session${p.sessionCount === 1 ? '' : 's'}`));
+    stats.appendChild(el('span', { class: 'pill' }, `${p.messageCount} msg${p.messageCount === 1 ? '' : 's'}`));
+    row.appendChild(stats);
     wrap1.appendChild(row);
   });
+  lastRow(wrap1);
   sec1.appendChild(wrap1);
   root.appendChild(sec1);
 
@@ -1815,14 +1825,18 @@ function renderSessions(root) {
   sec2.appendChild(el('div', { class: 'section-header' }, [el('div', { class: 'section-title' }, 'Recent sessions')]));
   const wrap2 = el('div', { class: 'table-wrap' });
   s.recent.forEach(r => {
-    const row = el('div', { class: 'item-row' });
-    const txt = el('div', {});
-    txt.appendChild(el('div', { class: 'item-name' }, r.summary));
-    txt.appendChild(el('div', { class: 'item-desc', style: 'font-family:var(--font-mono); font-size:11px;' }, `${r.projectPath} · ${r.messageCount} msgs · ${r.modified ? new Date(r.modified).toLocaleString() : ''}`));
-    row.appendChild(txt);
-    if (r.gitBranch) row.appendChild(el('span', { class: 'pill' }, r.gitBranch));
+    const row = el('div', { style: rowStyle });
+    const left = el('div', { style: 'flex:1; min-width:0;' });
+    left.appendChild(el('div', { style: 'font-size:13px; font-weight:500; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;', title: r.summary }, r.summary));
+    left.appendChild(el('div', { style: 'font-size:11px; color:var(--text-3); font-family:var(--font-mono); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;', title: r.projectPath }, `${tildify(r.projectPath)} · ${r.modified ? new Date(r.modified).toLocaleString() : ''}`));
+    row.appendChild(left);
+    const right = el('div', { style: 'display:flex; gap:6px; flex-shrink:0;' });
+    right.appendChild(el('span', { class: 'pill' }, `${r.messageCount} msg${r.messageCount === 1 ? '' : 's'}`));
+    if (r.gitBranch) right.appendChild(el('span', { class: 'pill' }, r.gitBranch));
+    row.appendChild(right);
     wrap2.appendChild(row);
   });
+  lastRow(wrap2);
   sec2.appendChild(wrap2);
   root.appendChild(sec2);
 }
