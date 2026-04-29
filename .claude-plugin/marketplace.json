@@ -1,13 +1,20 @@
 {
   "name": "vamshisuram-claudecode-manager",
   "owner": {
-    "name": "Vamshi Suram"
+    "name": "vamshisuram",
+    "url": "https://github.com/vamshisuram"
+  },
+  "metadata": {
+    "description": "Local web UI to inspect Claude Code plugins, agents, hooks, MCP servers, sessions, marketplaces, and settings.",
+    "version": "0.1.0"
   },
   "plugins": [
     {
       "name": "claudecode-manager",
       "source": "./",
-      "description": "Local web UI to inspect Claude Code plugins, agents, hooks, MCP servers, sessions, marketplaces, and settings."
+      "description": "Local web UI to inspect Claude Code plugins, agents, hooks, MCP servers, sessions, marketplaces, and settings.",
+      "version": "0.1.0",
+      "category": "productivity"
     }
   ]
 }
