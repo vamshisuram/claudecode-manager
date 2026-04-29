@@ -6,12 +6,7 @@
   "plugins": [
     {
       "name": "claudecode-manager",
-      "source": {
-        "source": "git-subdir",
-        "url": "https://github.com/vamshisuram/claudecode-manager.git",
-        "path": "claudecode-manager",
-        "ref": "main"
-      },
+      "source": "./claudecode-manager",
       "description": "Local web UI to inspect Claude Code plugins, agents, hooks, MCP servers, sessions, marketplaces, and settings."
     }
   ]
