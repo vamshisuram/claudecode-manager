@@ -68,7 +68,7 @@ Then:
 
 ```bash
 git clone https://github.com/vamshisuram/claudecode-manager.git
-cd claudecode-manager/claudecode-manager
+cd claudecode-manager
 node server.mjs
 ```
 
