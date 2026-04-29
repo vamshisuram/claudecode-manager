@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "claudecode-manager",
-      "source": ".",
+      "source": "./claudecode-manager",
       "description": "Local web UI to inspect Claude Code plugins, agents, hooks, MCP servers, sessions, marketplaces, and settings."
     }
   ]
