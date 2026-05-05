@@ -4,6 +4,8 @@ A local web UI to see and understand everything that shapes how Claude Code beha
 
 Plugins, agents, hooks, MCP servers, skills, slash commands, marketplaces, sessions, permissions, and settings — all in one place. Three clicks, one search box, full picture.
 
+![cc-manager UI](demo-snapshot.png)
+
 ---
 
 ## Why a web UI for a terminal tool
